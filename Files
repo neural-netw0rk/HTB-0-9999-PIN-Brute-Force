@@ -1,0 +1,7 @@
+ Files
+
+  ~/pin-dashboard/
+  ├── app.py          ← backend (edit this to add features)
+  └── templates/
+      └── index.html  ← frontend (edit this for UI changes)
+
