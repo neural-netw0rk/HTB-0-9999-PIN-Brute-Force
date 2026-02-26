@@ -1,8 +1,23 @@
 <img width="1701" height="992" alt="image" src="https://github.com/user-attachments/assets/73c54d97-9389-49c6-afc1-6230c29e6687" />
 
   
-  
-  
+features:
+
+                                         
+  - Port scanner: common/range/full 65k, banners, CVE hints                                                                                              
+  - HTTP probe: path fuzzing, headers, title, interesting endpoints                                                                                      
+  - Brute forcer: numeric PIN and wordlist mode, GET/POST, hit detection                                                                                 
+  - Reverse shell generator: 12 payload types, auto IP detection
+  - Netcat listener: in-browser with live output stream
+  - HTTP repeater: custom requests, response viewer, request history
+  - Payload arsenal: SQLi, XSS, SSTI, LFI, CMDi, XXE, SSRF, NoSQL
+  - Credential vault: localStorage, Hydra command generator, JSON export
+  - Encoder/decoder: Base64, Hex, URL, ROT13, HTML entities, JWT
+  - Hash identifier: 16 patterns with hashcat and john modes
+  - Notes: persistent localStorage scratchpad
+  - 3D globe: geolocation, ambient threat map, real-time scan effects
+
+
   
   Start it                                                                                                                                               
                                                                                                                                                          
