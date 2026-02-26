@@ -1,3 +1,9 @@
+<img width="1701" height="992" alt="image" src="https://github.com/user-attachments/assets/73c54d97-9389-49c6-afc1-6230c29e6687" />
+
+  
+  
+  
+  
   Start it                                                                                                                                               
                                                                                                                                                          
   cd ~/pin-dashboard                                                                                                                                     
